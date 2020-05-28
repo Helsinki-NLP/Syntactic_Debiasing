@@ -57,14 +57,14 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
         cls2_sentence = ' '.join([token['form'] for token in cls2_tokens])
 
         #compute embeddings from Bert
-        cls1_bert_tokens, cls1_bert_tokenization = bert.tokenize(cls1_sentence, bert_tokenizer)
+        cls1_bert_tokens, cls1_bert_tokenization = bert.tokenize(cls1_sentence)
         cls1_bert_enc = bert.encode(cls1_bert_tokens, bert_model)
 
-        cls2_bert_tokens, cls2_bert_tokenization = bert.tokenize(cls2_sentence, bert_tokenizer)
+        cls2_bert_tokens, cls2_bert_tokenization = bert.tokenize(cls2_sentence)
         cls2_bert_enc = bert.encode(cls2_bert_tokens, bert_model)
 
-        cls1_bert_enc = correct_bert_tokenization(cls1_bert_enc, active_bert_tokenization)
-        cls2_bert_enc = correct_bert_tokenization(cls2_bert_enc, passive_bert_tokenization)
+        cls1_bert_enc = bert.correct_bert_tokenization(cls1_bert_enc, active_bert_tokenization)
+        cls2_bert_enc = bert.correct_bert_tokenization(cls2_bert_enc, passive_bert_tokenization)
 
         #roles:
         #odict_keys(['id', 'form', 'lemma', 'upostag', 'xpostag', 'feats', 'head', 'deprel'])

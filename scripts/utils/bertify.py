@@ -7,15 +7,15 @@ N_BERT_LAYERS = 12
 
 class bertify:
     def __init__(self, device):
-        bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
             
         # Load pre-trained model (weights)
-        bert_model = BertModel.from_pretrained('bert-base-uncased')
-        bert_model.eval()
-        bert_model.to(device)
+        model = BertModel.from_pretrained('bert-base-uncased')
+        model.eval()
+        model.to(device)
 
 
-    def tokenize(sentence, tokenizer):
+    def tokenize(self, sentence):
         # OPTIONAL: if you want to have more information on what's happening, activate the logger as follows
         logging.basicConfig(level=logging.INFO)
 
@@ -24,12 +24,12 @@ class bertify:
             sentence = sentence.split(' ')
         sentence = ' '.join(['[CLS]'] + sentence + ['[SEP]'])
         #print(sentence)
-        tokenized_sentence = tokenizer.tokenize(sentence)
+        tokenized_sentence = self.tokenizer.tokenize(sentence)
 
         #print('tokenized: ', tokenized_sentence)
 
         # Convert token to vocabulary indices
-        indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_sentence)
+        indexed_tokens = self.tokenizer.convert_tokens_to_ids(tokenized_sentence)
 
         # Convert inputs to PyTorch tensors
         tokens_tensor = torch.tensor([indexed_tokens])
@@ -37,18 +37,18 @@ class bertify:
         return tokens_tensor, tokenized_sentence
 
 
-    def encode(tokens_tensor, model):
+    def encode(self, tokens_tensor):
         # If you have a GPU, put everything on cuda
         tokens_tensor = tokens_tensor.to('cuda')
 
         with torch.no_grad():
-            encoded_layers, _ = model(tokens_tensor)
+            encoded_layers, _ = self.model(tokens_tensor)
             #print(encoded_layers[0].shape)
 
         return encoded_layers
 
 
-    def correct_bert_tokenization(bert_encoding, bert_sentence):
+    def correct_bert_tokenization(self, bert_encoding, bert_sentence):
         print(bert_sentence)
 
         all_layers = []
