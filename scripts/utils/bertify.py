@@ -1,6 +1,6 @@
 import sys
 import torch
-from logger import logger
+from utils.logger import logger
 from pytorch_pretrained_bert import BertTokenizer, BertModel, BertForMaskedLM
 
 N_BERT_LAYERS = 12
