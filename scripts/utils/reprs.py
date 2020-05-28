@@ -146,9 +146,7 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
             cls2_instances.append(instance_2)
 
 
-
-
     if dataset == 'RNN' and clauses_only:
         pass
 
-    return instances
+    return cls1_instances, cls2_instances
