@@ -31,7 +31,7 @@ def  main(opt):
     else:
         for dataset, dataset_path, save_reprs_path in zip(opt.dataset, opt.dataset_path, opt.save_reprs_path):
             logger.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
-            cls1_instances[dataset], cls2_instances[dataset] = reprs.extract(dataset, dataset_path, cls1_name, cls2_name \
+            cls1_instances[dataset], cls2_instances[dataset] = reprs.extract(dataset, dataset_path, cls1_name, cls2_name, \
                                                                              opt.focus, opt.clauses_only, opt.device)
 
             logger.info('Saving representations to ' + dataset + ' at ' + dataset_path)            
