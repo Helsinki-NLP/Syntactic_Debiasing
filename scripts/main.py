@@ -25,8 +25,8 @@ def  main(opts):
             logger.info('Loading representations from ' + opt.load_reprs_path)
 
             # These will be lists of np arrays, since every sentence can be of arbitrary length now
-            cls1_instances{dataset} = reprs.loadh5file(load_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
-            cls2_instances{dataset} = reprs.loadh5file(load_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
+            cls1_instances[dataset] = reprs.loadh5file(load_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
+            cls2_instances[dataset] = reprs.loadh5file(load_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
 
     else:
         for dataset, dataset_path, save_reprs_path in zip(opt.dataset, opt.dataset_path, opt.save_reprs_path):
