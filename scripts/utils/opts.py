@@ -9,26 +9,26 @@ def get_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--dataset', type=str, required=True, default=['SICK'], nargs='+',
-                        help='Dataset to use [SICK (default) | RNN]')
+                        help='dataset to use [SICK (default) | RNN]')
 
     parser.add_argument('--cuda', action='store_true',
-                        help='Whether to use a cuda device.')
+                        help='whether to use a cuda device')
     
     parser.add_argument('--extract_only', action='store_true',
                         help='run only until the extraction and saving of representations')
 
     parser.add_argument('--dataset_path', required=False, type=str, nargs='+',
                         default=['/scratch/project_2002233/debiasing/data/SICK/Filtered'],
-                        help='Path to the raw dataset location. Defaults to puhti:SICK location')
+                        help='path to the raw dataset location. Defaults to puhti:SICK location')
 
     parser.add_argument('--debug_mode', action='store_true',
-                        help='Launch ipdb debugger if script crashes.')
+                        help='launch ipdb debugger if script crashes.')
     
     parser.add_argument('--load_reprs_path', required=False, type=str, nargs='+',
-                        help='Previously extracted representations\' locations')
+                        help='previously extracted representations\' locations')
 
     parser.add_argument('--save_reprs_path', required=False, type=str, nargs='+',
-                        help='Save the extracted representations to')
+                        help='save the extracted representations to')
 
     parser.add_argument('--outdir', type=str, required=False, default='../outputs/',
                         help='path to dir where output logs will be saved')

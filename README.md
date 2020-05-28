@@ -21,6 +21,8 @@ _You can use the checked-out repository at /path/to/project/github/_
                     --dataset SICK \
                     --dataset_path /path/to/project/data/SICK/Filtered/ \
                     --save_reprs_path /path/to/project/representations/ \
+                    --task active-passive
+                    --focus verb
                     --cuda
 
 

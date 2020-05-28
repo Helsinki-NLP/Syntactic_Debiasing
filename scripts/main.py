@@ -13,6 +13,7 @@ from utils import reprs
 
 
 def  main(opt):
+    device = torch.device('cuda' if opt.cuda else 'cpu') 
 
     #----- Loading data -----
 
@@ -32,7 +33,7 @@ def  main(opt):
         for dataset, dataset_path, save_reprs_path in zip(opt.dataset, opt.dataset_path, opt.save_reprs_path):
             logger.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
             cls1_instances[dataset], cls2_instances[dataset] = reprs.extract(dataset, dataset_path, cls1_name, cls2_name,
-                                                                             opt.focus, opt.clauses_only, opt.device)
+                                                                             opt.focus, opt.clauses_only, device)
 
             logger.info('Saving representations to ' + dataset + ' at ' + dataset_path)            
             reprs.saveh5file(cls1_instances[dataset], save_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
