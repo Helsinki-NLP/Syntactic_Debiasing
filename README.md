@@ -10,7 +10,7 @@
     * Active sentences: Under /path/to/project/data/RNN-Priming/test/\*/list\*\_orc.pos.parse.conll
     * Passive sentences: Under /path/to/project/data/RNN-Priming/test/\*/list\*\_prc.pos.parse.conll
 
-### Running the code on Puhti:
+### Running the code on cluster:
 _You can use the checked-out repository at /path/to/project/github/_
 
     $ cd /path/to/project/github/scripts
