@@ -7,12 +7,14 @@ N_BERT_LAYERS = 12
 
 class bertify:
     def __init__(self, device):
+        self.device = device
+
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
             
         # Load pre-trained model (weights)
         self.model = BertModel.from_pretrained('bert-base-uncased')
         self.model.eval()
-        self.model.to(device)
+        self.model.to(self.device)
 
 
     def tokenize(self, sentence):
@@ -35,8 +37,7 @@ class bertify:
 
 
     def encode(self, tokens_tensor):
-        # If you have a GPU, put everything on cuda
-        tokens_tensor = tokens_tensor.to('cuda')
+        tokens_tensor = tokens_tensor.to(self.device)
 
         with torch.no_grad():
             encoded_layers, _ = self.model(tokens_tensor)
