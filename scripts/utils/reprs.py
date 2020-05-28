@@ -126,10 +126,10 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
                             break
 
                 instance_1 = np.stack([active_bert_enc[layer][:,WOI_active_id-1,:].squeeze().detach().cpu().numpy() \
-                                                                                for layer in range(bert.N_BERT_LAYERS)] \
+                                                                                for layer in range(bert.N_BERT_LAYERS)], \
                                                                                 axis=1)
                 instance_2 = np.stack([passive_bert_enc[layer][:,WOI_passive_id-1,:].squeeze().detach().cpu().numpy() \
-                                                                                for layer in range(bert.N_BERT_LAYERS)] \
+                                                                                for layer in range(bert.N_BERT_LAYERS)], \
                                                                                 axis=1)
 
                 logger.info('Active: ', active_token['form'])
