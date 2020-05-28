@@ -8,7 +8,7 @@ import argparse
 def get_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset", type=str, required=True, default=['SICK'], nargs='+'
+    parser.add_argument("--dataset", type=str, required=True, default=['SICK'], nargs='+',
                         help="Dataset to use [SICK (default) | RNN]")
 
     parser.add_argument("--cuda", action='store_true',
