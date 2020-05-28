@@ -40,7 +40,6 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
     cls1_instances = []
     cls2_instances = []
 
-    print(device)
     bert = bertify(device)
 
     cls1_file = open(data_path + '/' + f'{dataset}.{cls1_name}.pos.parse.conll', 'r', encoding="utf-8")

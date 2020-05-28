@@ -3,7 +3,6 @@ import torch
 from utils.logger import logger
 from pytorch_pretrained_bert import BertTokenizer, BertModel, BertForMaskedLM
 
-N_BERT_LAYERS = 12
 
 class bertify:
     def __init__(self, device):
@@ -16,6 +15,8 @@ class bertify:
         self.model.eval()
         self.model.to(self.device)
 
+        self.N_LAYERS = 12
+        self.ENC_DIM = 768
 
     def tokenize(self, sentence):
         # Tokenized input
@@ -50,7 +51,7 @@ class bertify:
         print(bert_sentence)
 
         all_layers = []
-        for layer in range(N_BERT_LAYERS):
+        for layer in range(self.N_LAYERS):
             current_layer = []
 
             prev_token = bert_encoding[layer][0,0,:] # This is [CLS]!
@@ -60,14 +61,14 @@ class bertify:
             accum = 1
             for token_id in range(1,sequence_len):
                 if  bert_sentence[token_id][:2] != '##':
-                    current_layer.append(prev_token.view(1,1,ENC_DIM) / accum) # Average pooling
+                    current_layer.append(prev_token.view(1,1,self.ENC_DIM) / accum) # Average pooling
                     accum = 1
                     prev_token = bert_encoding[layer][0,token_id,:]
                 else:
                     prev_token += bert_encoding[layer][0,token_id,:] # Average pooling
                     accum += 1
             # Add the final token too:
-            current_layer.append(prev_token.view(1,1,ENC_DIM) / accum) # Average pooling
+            current_layer.append(prev_token.view(1,1,self.ENC_DIM) / accum) # Average pooling
 
             current_layer_tensor = torch.cat(current_layer, dim=1)
             # Get rid of the [CLS] and [SEP]
