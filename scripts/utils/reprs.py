@@ -1,4 +1,5 @@
 import sys
+import os
 import h5py
 import conllu
 import numpy as np
