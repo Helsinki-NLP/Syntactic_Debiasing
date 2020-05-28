@@ -54,7 +54,4 @@ def get_parser():
     parser.add_argument('--test_on', required=False,
                         help='test on the given dataset [SICK | RNN]')   
 
-    parser.add_argument('--help', action='store_true',
-                        help='displays this help menu')
-
     return parser

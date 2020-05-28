@@ -66,8 +66,7 @@ def  main(opt):
     #    logger(' you can also use option --plot_results')
 
 
-
-if __name__ == 'main':
+if __name__ == '__main__':
     parser = opts.get_parser()
     opt = parser.parse_args()
     if opt.help:
