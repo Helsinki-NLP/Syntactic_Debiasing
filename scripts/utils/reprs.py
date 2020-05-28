@@ -3,6 +3,7 @@ import h5py
 import conllu
 import numpy as np
 from utils.bertify import bertify
+from utils.logger import logger
 
 
 # ----- h5 file functions -----
