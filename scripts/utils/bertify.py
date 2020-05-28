@@ -7,12 +7,12 @@ N_BERT_LAYERS = 12
 
 class bertify:
     def __init__(self, device):
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
             
         # Load pre-trained model (weights)
-        model = BertModel.from_pretrained('bert-base-uncased')
-        model.eval()
-        model.to(device)
+        self.model = BertModel.from_pretrained('bert-base-uncased')
+        self.model.eval()
+        self.model.to(device)
 
 
     def tokenize(self, sentence):
