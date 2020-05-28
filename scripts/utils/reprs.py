@@ -134,8 +134,8 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
                                                                                 for layer in range(bert.N_LAYERS)], \
                                                                                 axis=1)
 
-                logger.info(f'Active:  {active_token['form']}')
-                logger.info(f'Passive: {passive_token['form']}')
+                logger.info('Active: ' + active_token['form'])
+                logger.info('Passive: ' + passive_token['form'])
 
                 print(instance_1.shape)
                 sys.exit(1)
