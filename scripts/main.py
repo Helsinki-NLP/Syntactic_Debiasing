@@ -4,6 +4,7 @@ Code structure inspired from: Juan Raul Vazquez Carillo
 """
 
 import sys
+import torch
 import pickle
 from tqdm import tqdm
 from utils import opts
