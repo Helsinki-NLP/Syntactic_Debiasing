@@ -16,9 +16,6 @@ class bertify:
 
 
     def tokenize(self, sentence):
-        # OPTIONAL: if you want to have more information on what's happening, activate the logger as follows
-        logging.basicConfig(level=logging.INFO)
-
         # Tokenized input
         if isinstance(sentence, str):
             sentence = sentence.split(' ')
