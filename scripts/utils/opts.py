@@ -33,10 +33,10 @@ def get_parser():
     parser.add_argument("--plot_results", action='store_true',
                         help="if active, will plot visualizations of the data")
 
-    parser.add_argument("--task", required=True, default='active-passive'
+    parser.add_argument("--task", required=True, default='active-passive',
                         help="which syntactic information to debias, default active-passive")    
 
-    parser.add_argument("--focus", required=True, default='verb'
+    parser.add_argument("--focus", required=True, default='verb',
                         help="which part of the sentence to focus on [verb [default] | subject | object | all")   
 
     parser.add_argument("--clauses_only", action='store_true',
