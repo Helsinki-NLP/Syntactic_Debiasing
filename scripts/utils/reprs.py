@@ -1,6 +1,7 @@
 import sys
 import h5py
 import conllu
+import numpy as np
 from utils.bertify import bertify
 
 
