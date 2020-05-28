@@ -38,6 +38,11 @@ def  main(opt):
             reprs.saveh5file(cls1_instances[dataset], save_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
             reprs.saveh5file(cls2_instances[dataset], save_reprs_path + '/' + f'{dataset}.{cls2_name}.{opt.focus}.h5')
 
+            if opt.extract_only:
+                logger.info('Finishing...')
+                sys.exit(0)
+
+
     #----- Train-Test Splits -----
 
     logger.info('Separating training and test sets')
@@ -59,10 +64,13 @@ def  main(opt):
 
     #----- Logging results -----
 
+    output_dir = f'{opt.outdir}/{opt.dataset}/{opt.task}'
+
+
     #if opt.plot_results:
-    #    Plt.makeplot(metrics)
+    #    Plt.makeplot()
     #else:
-    #    logger('finishing ... to make a plot like ours call `utils/ploting.py path/to/savedMetrics.pkl` ')
+    #    logger('finishing ... to make a plot call: ')
     #    logger(' you can also use option --plot_results')
 
 

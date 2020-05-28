@@ -14,6 +14,9 @@ def get_parser():
     parser.add_argument('--cuda', action='store_true',
                         help='Whether to use a cuda device.')
     
+    parser.add_argument('--extract_only', action='store_true',
+                        help='run only until the extraction and saving of representations')
+
     parser.add_argument('--dataset_path', required=False, type=str, nargs='+',
                         default=['/scratch/project_2002233/debiasing/data/SICK/Filtered'],
                         help='Path to the raw dataset location. Defaults to puhti:SICK location')
