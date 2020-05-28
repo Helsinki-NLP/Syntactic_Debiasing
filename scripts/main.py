@@ -78,8 +78,6 @@ def  main(opt):
 if __name__ == '__main__':
     parser = opts.get_parser()
     opt = parser.parse_args()
-    if opt.dev_params:
-        update_opts_to_devmode(opt)
     if opt.debug_mode:
         with ipdb.launch_ipdb_on_exception():
             main(opt)
