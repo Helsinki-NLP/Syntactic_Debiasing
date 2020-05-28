@@ -127,10 +127,10 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
                             WOI_active_id = active_token['id']
                             break
 
-                instance_1 = np.stack([active_bert_enc[layer][:,WOI_active_id-1,:].squeeze().detach().cpu().numpy() \
+                instance_1 = np.stack([np.reshape(active_bert_enc[layer][:,WOI_active_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
                                                                                 for layer in range(bert.N_LAYERS)], \
                                                                                 axis=1)
-                instance_2 = np.stack([passive_bert_enc[layer][:,WOI_passive_id-1,:].squeeze().detach().cpu().numpy() \
+                instance_2 = np.stack([np.reshape(passive_bert_enc[layer][:,WOI_passive_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
                                                                                 for layer in range(bert.N_LAYERS)], \
                                                                                 axis=1)
 
