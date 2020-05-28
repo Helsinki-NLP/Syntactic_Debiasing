@@ -70,6 +70,9 @@ def  main(opt):
 if __name__ == 'main':
     parser = opts.get_parser()
     opt = parser.parse_args()
+    if opt.help:
+        parser.print_help()
+        sys.exit(0)
     if opt.dev_params:
         update_opts_to_devmode(opt)
     if opt.debug_mode:

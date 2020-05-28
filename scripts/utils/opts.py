@@ -49,9 +49,12 @@ def get_parser():
                         help='enforces that same lexical entities go to the same train/test set split')
 
     parser.add_argument('--train_on', required=False,
-                        help='trains on the given dataset [SICK | RNN]')
+                        help='train on the given dataset [SICK | RNN]')
 
     parser.add_argument('--test_on', required=False,
-                        help='tests on the given dataset [SICK | RNN]')   
+                        help='test on the given dataset [SICK | RNN]')   
+
+    parser.add_argument('--help', action='store_true',
+                        help='displays this help menu')
 
     return parser
