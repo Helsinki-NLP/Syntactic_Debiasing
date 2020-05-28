@@ -38,8 +38,8 @@ def  main(opt):
                                                                              opt.focus, opt.clauses_only, device)
 
             logger.info('Saving representations to ' + dataset + ' at ' + dataset_path)            
-            reprs.saveh5file(cls1_instances[dataset], save_reprs_path + '/' + f'{dataset}/{task}/{dataset}.{cls1_name}.{opt.focus}.h5')
-            reprs.saveh5file(cls2_instances[dataset], save_reprs_path + '/' + f'{dataset}/{task}/{dataset}.{cls2_name}.{opt.focus}.h5')
+            reprs.saveh5file(cls1_instances[dataset], save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
+            reprs.saveh5file(cls2_instances[dataset], save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
 
             if opt.extract_only:
                 logger.info('Finishing...')
