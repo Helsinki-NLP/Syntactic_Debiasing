@@ -12,11 +12,11 @@ from utils import reprs
 
 
 
-def  main(opts):
+def  main(opt):
 
     #----- Loading data -----
 
-    cls1_name, cls2_name = opts.task.split('-')
+    cls1_name, cls2_name = opt.task.split('-')
 
     cls1_instances = {}
     cls2_instances = {}
