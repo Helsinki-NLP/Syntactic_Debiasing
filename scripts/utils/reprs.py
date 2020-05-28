@@ -38,7 +38,7 @@ def connluify(lines):
 
 
 def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, device):
-    # This will be a list of np arrays, since every sentence can be of arbitrary length now
+    # This will be a list of np arrays of shape (seq_len x n_layers x enc_dim), since every sentence can be of arbitrary length now
     cls1_instances = []
     cls2_instances = []
 
@@ -137,8 +137,6 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
                 logger.info('Active: ' + active_token['form'])
                 logger.info('Passive: ' + passive_token['form'])
 
-                print(instance_1.shape)
-                sys.exit(1)
 
             if focus == 'all':
                 pass
