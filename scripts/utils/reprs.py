@@ -1,7 +1,7 @@
 import sys
 import h5py
 import conllu
-from bertify import bertify
+from utils.bertify import bertify
 
 
 # ----- h5 file functions -----
