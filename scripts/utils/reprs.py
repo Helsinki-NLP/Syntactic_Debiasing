@@ -19,8 +19,8 @@ def loadh5file(load_path):
 
 def saveh5file(representations, save_path):
     '''save embeddings in h5 format'''
-    logger.info(f'     saving embeddings to {outfile}')
-    os.system(f'mkdir -p {os.path.dirname(outfile)}')
+    logger.info(f'     saving embeddings to {save_path}')
+    os.system(f'mkdir -p {os.path.dirname(save_path)}')
     with h5py.File(outfile, 'w') as fout:
         for idx,rps in enumerate(representations):
             fout.create_dataset(str(idx), rps.shape, dtype='float32', data=rps)

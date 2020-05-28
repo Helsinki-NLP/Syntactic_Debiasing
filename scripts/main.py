@@ -26,7 +26,8 @@ def  main(opt):
         for dataset, reprs_path in zip(opt.dataset, opt.load_reprs_path):
             logger.info('Loading representations from ' + opt.load_reprs_path)
 
-            # These will be lists of np arrays, since every sentence can be of arbitrary length now
+            # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), 
+            # since every sentence can be of arbitrary length now
             cls1_instances[dataset] = reprs.loadh5file(load_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
             cls2_instances[dataset] = reprs.loadh5file(load_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
 
@@ -37,8 +38,8 @@ def  main(opt):
                                                                              opt.focus, opt.clauses_only, device)
 
             logger.info('Saving representations to ' + dataset + ' at ' + dataset_path)            
-            reprs.saveh5file(cls1_instances[dataset], save_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
-            reprs.saveh5file(cls2_instances[dataset], save_reprs_path + '/' + f'{dataset}.{cls2_name}.{opt.focus}.h5')
+            reprs.saveh5file(cls1_instances[dataset], save_reprs_path + '/' + f'{dataset}/{task}/{dataset}.{cls1_name}.{opt.focus}.h5')
+            reprs.saveh5file(cls2_instances[dataset], save_reprs_path + '/' + f'{dataset}/{task}/{dataset}.{cls2_name}.{opt.focus}.h5')
 
             if opt.extract_only:
                 logger.info('Finishing...')
