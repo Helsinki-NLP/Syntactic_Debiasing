@@ -48,15 +48,12 @@ class bertify:
 
 
     def correct_bert_tokenization(self, bert_encoding, bert_sentence):
-        print(bert_sentence)
-
         all_layers = []
         for layer in range(self.N_LAYERS):
             current_layer = []
 
             prev_token = bert_encoding[layer][0,0,:] # This is [CLS]!
             sequence_len = bert_encoding[layer].shape[1]
-            print('cbt: seq_len:', sequence_len)
 
             accum = 1
             for token_id in range(1,sequence_len):
@@ -75,6 +72,5 @@ class bertify:
             current_layer_tensor = current_layer_tensor[:,1:-1,:]
 
             all_layers.append(current_layer_tensor)
-            print('cbt: all_layers[0]', all_layers[0].shape)
 
         return all_layers

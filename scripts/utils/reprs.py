@@ -85,8 +85,8 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
             active_tokens = cls1_tokens
             passive_tokens = cls2_tokens
 
-            active_bert_enc = cls1_encoding
-            passive_bert_enc = cls2_encoding
+            active_bert_enc = cls1_bert_enc
+            passive_bert_enc = cls2_bert_enc
 
             if focus != 'all':
                 if focus == 'verb':
