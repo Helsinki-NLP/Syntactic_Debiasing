@@ -36,7 +36,8 @@ Eg. SICK dataset + RNN dataset:
 
     $ python main.py --extract_only \ 
                     --dataset SICK RNN \
-                    --dataset_path /path/to/project/data/SICK/Filtered/ /path/to/project/data/RNN-Priming/combined/ \
+                    --dataset_path /path/to/project/data/SICK/Filtered/ \
+                                   /path/to/project/data/RNN-Priming/combined/ \
                     --save_reprs_path /path/to/project/representations/ \
                     --task active-passive \
                     --focus verb
