@@ -41,9 +41,9 @@ def  main(opt):
             reprs.saveh5file(cls1_instances[dataset], save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
             reprs.saveh5file(cls2_instances[dataset], save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
 
-            if opt.extract_only:
-                logger.info('Finishing...')
-                sys.exit(0)
+        if opt.extract_only:
+            logger.info('Finishing...')
+            sys.exit(0)
 
 
     #----- Train-Test Splits -----

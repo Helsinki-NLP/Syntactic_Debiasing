@@ -83,6 +83,7 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
         print(cls1_sentence)
         print(cls1_bert_tokenization)
 
+
         # ----- Active-Passive Task -----
         if cls1_name == 'active' and cls2_name == 'passive':
             active_tokens = cls1_tokens
