@@ -24,6 +24,7 @@ _You can use the checked-out repository at /path/to/project/github/_
 #### To extract representations:
 
 Eg. SICK dataset:
+
     $ python main.py --extract_only \ 
                     --dataset SICK \
                     --dataset_path /path/to/project/data/SICK/Filtered/ \
@@ -32,6 +33,7 @@ Eg. SICK dataset:
                     --focus verb
 
 Eg. SICK dataset + RNN dataset:
+
     $ python main.py --extract_only \ 
                     --dataset SICK RNN \
                     --dataset_path /path/to/project/data/SICK/Filtered/ /path/to/project/data/RNN-Priming/combined/ \
