@@ -32,14 +32,14 @@ def  main(opt):
             cls2_instances[dataset] = reprs.loadh5file(load_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
 
     else:
-        for dataset, dataset_path, save_reprs_path in zip(opt.dataset, opt.dataset_path, opt.save_reprs_path):
+        for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
             logger.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
             cls1_instances[dataset], cls2_instances[dataset] = reprs.extract(dataset, dataset_path, cls1_name, cls2_name,
                                                                              opt.focus, opt.clauses_only, device)
 
             logger.info('Saving representations to ' + dataset + ' at ' + dataset_path)            
-            reprs.saveh5file(cls1_instances[dataset], save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
-            reprs.saveh5file(cls2_instances[dataset], save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
+            reprs.saveh5file(cls1_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
+            reprs.saveh5file(cls2_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
 
         if opt.extract_only:
             logger.info('Finishing...')
