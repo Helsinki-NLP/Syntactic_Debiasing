@@ -1,6 +1,7 @@
 import sys
 import os
 import h5py
+import pickle
 import conllu
 import numpy as np
 from utils.bertify import bertify
