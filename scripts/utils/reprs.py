@@ -27,6 +27,24 @@ def saveh5file(representations, save_path):
             fout.create_dataset(str(idx), rps.shape, dtype='float32', data=rps)
 
 
+# ----- pickle file functions -----
+def loadpickle(load_path):
+    '''load words from pickle file'''
+    logger.info('   loading from {0}'.format(load_path))
+    with open(load_path, 'rb') as fin:
+        words = pickle.load(fin)
+    return loaded_reprs
+
+
+def savepickle(words, save_path):
+    '''save words in pickle format'''
+    logger.info(f'     saving words to {save_path}')
+    os.system(f'mkdir -p {os.path.dirname(save_path)}')
+    with open('save_path', 'wb') as fout:
+        pickle.dump(words, fout)
+
+
+
 # ----- conllu parsing functions -----
 
 def connluify(lines):
@@ -39,9 +57,13 @@ def connluify(lines):
 
 
 def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, device):
-    # This will be a list of np arrays of shape (seq_len x n_layers x enc_dim), since every sentence can be of arbitrary length now
+    # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), since every sentence can be of arbitrary length now
     cls1_instances = []
     cls2_instances = []
+
+    # These will be list of lists of tokens, one list of tokens per sentence.
+    cls1_words = []
+    cls2_words = []
 
     bert = bertify(device)
 
@@ -97,36 +119,41 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
                     for passive_token in passive_tokens:
                         if passive_token['deprel'] == 'ROOT':
                             WOI_active_id = passive_token['id']
+                            WOI_passive_form = passive_token['form']
                             break
                     for active_token in active_tokens:
                         if active_token['deprel'] == 'ROOT':
                             WOI_passive_id = active_token['id']
-                            WOI_form = active_token['form']
+                            WOI_active_form = active_token['form']
                             break
 
                 if focus == 'subject':
                     for passive_token in passive_tokens:
                         if passive_token['form'] == 'by':
                             WOI_passive_id = passive_token['head']
+                            WOI_passive_form = passive_token['form']
                             break
                     for passive_token in passive_tokens:
                         if passive_token['id'] == WOI_passive_id:
                             WOI_form = passive_token['form']
+                            WOI_passive_form = passive_token['form']
                             break
                     for active_token in active_tokens:
                         if active_token['form'] == WOI_form:
                             WOI_active_id = active_token['id']
+                            WOI_active_form = active_token['form']
                             break
 
                 if focus == 'object':
                     for passive_token in passive_tokens:
                         if passive_token['deprel'] == 'nsubjpass':
                             WOI_passive_id = passive_token['id']
-                            WOI_form = passive_token['form']
+                            WOI_passive_form = passive_token['form']
                             break
                     for active_token in active_tokens:
                         if active_token['form'] == WOI_form and active_token['deprel'] == 'dobj':
                             WOI_active_id = active_token['id']
+                            WOI_active_form = active_token['form']
                             break
 
                 instance_1 = np.stack([np.reshape(active_bert_enc[layer][:,WOI_active_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
@@ -136,8 +163,11 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
                                                                                 for layer in range(bert.N_LAYERS)], \
                                                                                 axis=1)
 
-                logger.info('Active: ' + active_token['form'])
-                logger.info('Passive: ' + passive_token['form'])
+                words_1 = [WOI_active_form]
+                words_2 = [WOI_passive_form]
+
+                logger.info('Active: ' + WOI_active_form)
+                logger.info('Passive: ' + WOI_passive_form)
 
 
             if focus == 'all':
@@ -146,9 +176,12 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
 
             cls1_instances.append(instance_1)
             cls2_instances.append(instance_2)
+            
+            cls1_words.append(words_1)
+            cls2_words.append(words_2)
 
 
     if dataset == 'RNN' and clauses_only:
         pass
 
-    return cls1_instances, cls2_instances
+    return cls1_instances, cls2_instances, cls1_words, cls2_words

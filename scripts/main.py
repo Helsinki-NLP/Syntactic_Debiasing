@@ -10,7 +10,7 @@ from tqdm import tqdm
 from utils import opts
 from utils.logger import logger
 from utils import reprs
-
+from utils import arrange_data
 
 
 def  main(opt):
@@ -22,6 +22,10 @@ def  main(opt):
 
     cls1_instances = {}
     cls2_instances = {}
+
+    cls1_words = {}
+    cls2_words = {}
+
     if opt.load_reprs_path:
         for dataset, reprs_path in zip(opt.dataset, opt.load_reprs_path):
             logger.info('Loading representations from ' + opt.load_reprs_path)
@@ -34,12 +38,16 @@ def  main(opt):
     else:
         for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
             logger.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
-            cls1_instances[dataset], cls2_instances[dataset] = reprs.extract(dataset, dataset_path, cls1_name, cls2_name,
-                                                                             opt.focus, opt.clauses_only, device)
+            cls1_instances[dataset], cls2_instances[dataset], cls1_words[dataset], cls2_words[dataset] \
+                                = reprs.extract(dataset, dataset_path, cls1_name, cls2_name,
+                                                opt.focus, opt.clauses_only, device)
 
             logger.info('Saving representations to ' + dataset + ' at ' + dataset_path)            
             reprs.saveh5file(cls1_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
             reprs.saveh5file(cls2_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
+
+            reprs.savepickle(cls1_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.words.pkl')
+            reprs.savepickle(cls2_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
 
         if opt.extract_only:
             logger.info('Finishing...')
@@ -57,8 +65,7 @@ def  main(opt):
         pass
 
     for dataset in opt.dataset:
-        pass
-        #train_set{dataset}, test_set{dataset} = train_set_split(cls1_instances{dataset}, cls2_instances{dataset}, opt.lexical_split)
+        train_set{dataset}, test_set{dataset} = arrange_data.train_set_split(cls1_instances{dataset}, cls2_instances{dataset}, opt.lexical_split)
 
 
     #----- Training -----
