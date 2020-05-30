@@ -9,7 +9,7 @@ def get_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--dataset', type=str, required=True, default=['SICK'], nargs='+',
-                        help='dataset to use [SICK (default) | RNN]')
+                        help='dataset to use [SICK (default) | SICK_tensecorr (manually tense-corrected) | RNN]')
 
     parser.add_argument('--cuda', action='store_true',
                         help='whether to use a cuda device')
@@ -27,7 +27,7 @@ def get_parser():
     parser.add_argument('--load_reprs_path', required=False, type=str, nargs='+',
                         help='previously extracted representations\' locations')
 
-    parser.add_argument('--save_reprs_path', required=False, type=str, nargs='+',
+    parser.add_argument('--save_reprs_path', required=False, type=str,
                         help='save the extracted representations to')
 
     parser.add_argument('--outdir', type=str, required=False, default='../outputs/',
