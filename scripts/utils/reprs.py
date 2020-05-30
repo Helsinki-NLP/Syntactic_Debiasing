@@ -41,7 +41,7 @@ def savepickle(words, save_path):
     '''save words in pickle format'''
     logger.info(f'     saving words to {save_path}')
     os.system(f'mkdir -p {os.path.dirname(save_path)}')
-    with open('save_path', 'wb') as fout:
+    with open(save_path, 'wb') as fout:
         pickle.dump(words, fout)
 
 
