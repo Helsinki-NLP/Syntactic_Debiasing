@@ -65,7 +65,7 @@ def  main(opt):
         pass
 
     for dataset in opt.dataset:
-        train_set[dataset], test_set[dataset] = arrange_data.train_set_split(cls1_instances{dataset}, cls2_instances{dataset}, opt.lexical_split)
+        train_set[dataset], test_set[dataset] = arrange_data.train_set_split(cls1_instances[dataset], cls2_instances[dataset], opt.lexical_split)
 
 
     #----- Training -----
