@@ -1,6 +1,6 @@
 import sys
 import os
-import np
+import numpy as np
 import random
 
 
