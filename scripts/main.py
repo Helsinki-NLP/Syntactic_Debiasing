@@ -61,7 +61,7 @@ def  main(opt):
 
     logger.info('Separating training and test sets')
     train_set = {}
-    dev_set = {}
+    test_set = {}
 
     if opt.cross_dataset_lexical_split:
         # keep only the intersection of lexical items in both datasets

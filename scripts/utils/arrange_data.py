@@ -24,7 +24,6 @@ def train_set_split(cls1_instances, cls2_instances, cls1_words, cls2_words, is_l
 
         for i in range(n_sentences):
             if random.uniform(0, 1) < 1 - TEST_RATIO:
-                print(type(cls1_instances[i]))
                 train_set += [cls1_instances[i]] + [cls2_instances[i]]
                 print(f'sentence {i} to train')
             else:
