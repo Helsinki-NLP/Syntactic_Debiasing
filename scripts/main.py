@@ -33,8 +33,8 @@ def  main(opt):
 
             # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), 
             # since every sentence can be of arbitrary length now
-            cls1_instances[dataset] = reprs.loadh5file(load_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
-            cls2_instances[dataset] = reprs.loadh5file(load_reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
+            cls1_instances[dataset] = reprs.loadh5file(reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
+            cls2_instances[dataset] = reprs.loadh5file(reprs_path + '/' + f'{dataset}.{cls1_name}.{opt.focus}.h5')
 
     else:
         for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
