@@ -6,6 +6,7 @@ Code structure inspired from: Juan Raul Vazquez Carillo
 import sys
 import torch
 import pickle
+import random
 from tqdm import tqdm
 from utils import opts
 from utils.logger import logger
@@ -65,7 +66,9 @@ def  main(opt):
         pass
 
     for dataset in opt.dataset:
-        train_set[dataset], test_set[dataset] = arrange_data.train_set_split(cls1_instances[dataset], cls2_instances[dataset], opt.lexical_split)
+        train_set[dataset], test_set[dataset] = arrange_data.train_set_split(cls1_instances[dataset], cls2_instances[dataset],
+                                                                             cls1_words[dataset], cls2_words[dataset], 
+                                                                             opt.lexical_split)
 
 
     #----- Training -----
@@ -87,6 +90,8 @@ def  main(opt):
 if __name__ == '__main__':
     parser = opts.get_parser()
     opt = parser.parse_args()
+    if opt.seed:
+        random.seed(opt.seed)
     if opt.debug_mode:
         with ipdb.launch_ipdb_on_exception():
             main(opt)
