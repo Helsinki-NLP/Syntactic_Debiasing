@@ -15,7 +15,8 @@ def loadh5file(load_path):
     logger.info(f'   loading embeddings from {load_path}')
     h5f = h5py.File(load_path, 'r')
     setlen = len(h5f)
-    loaded_reprs = [torch.FloatTensor(h5f.get(str(i))[()]) for i in range(setlen)]
+    loaded_reprs = [[h5f.get(str(i))[()]] for i in range(setlen)]
+    print(type(loaded_reprs[0]))
     h5f.close()
     return loaded_reprs
 
@@ -26,7 +27,7 @@ def saveh5file(representations, save_path):
     os.system(f'mkdir -p {os.path.dirname(save_path)}')
     with h5py.File(save_path, 'w') as fout:
         for idx,rps in enumerate(representations):
-            fout.create_dataset(str(idx), data=rps)
+            fout.create_dataset(str(idx), data=rps, dtype=list)
 
 
 # ----- pickle file functions -----
