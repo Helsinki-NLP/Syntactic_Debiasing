@@ -29,7 +29,7 @@ def  main(opt):
 
     if opt.load_reprs_path:
         for dataset in opt.dataset:
-            logger.info('Loading representations from ' + dataset ' at ' + opt.load_reprs_path)
+            logger.info('Loading representations from ' + dataset + ' at ' + opt.load_reprs_path)
 
             # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), 
             # since every sentence can be of arbitrary length now
