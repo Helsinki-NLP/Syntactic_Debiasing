@@ -158,12 +158,12 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
                             WOI_active_form = active_token['form']
                             break
 
-                instance_1 = np.stack([np.reshape(active_bert_enc[layer][:,WOI_active_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
+                instance_1 = [np.stack([np.reshape(active_bert_enc[layer][:,WOI_active_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
                                                                                 for layer in range(bert.N_LAYERS)], \
-                                                                                axis=1)
-                instance_2 = np.stack([np.reshape(passive_bert_enc[layer][:,WOI_passive_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
+                                                                                axis=1)]
+                instance_2 = [np.stack([np.reshape(passive_bert_enc[layer][:,WOI_passive_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
                                                                                 for layer in range(bert.N_LAYERS)], \
-                                                                                axis=1)
+                                                                                axis=1)]
 
                 words_1 = [WOI_active_form]
                 words_2 = [WOI_passive_form]
