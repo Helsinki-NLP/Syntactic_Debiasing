@@ -22,7 +22,7 @@ def train_set_split(cls1_instances, cls2_instances, cls1_words, cls2_words, is_l
         # There can be more than one instance coming from the same sentence
         # We must make sure all sentence goes into the same set
 
-        for i in range(len(n_sentences)):
+        for i in range(n_sentences):
             if random.uniform(0, 1) < 1 - TEST_RATIO:
                 train_set += cls1_instances[i] + cls2_instances[i]
                 print(f'sentence {i} to train')
@@ -36,7 +36,7 @@ def train_set_split(cls1_instances, cls2_instances, cls1_words, cls2_words, is_l
         # We must make sure that we split lexically, ie., all instances of a single word goes to the same set
 
         assignments = {word: ('train' if (random.uniform(0, 1) < 1 - TEST_RATIO) else 'test') for word in vocabulary}
-        for i in range(len(n_sentences)):
+        for i in range(n_sentences):
             # assuming there is a single word coming from every sentence!
             # otherwise we wont use this constraint.
             if assignments[cls1_words[i]] == 'train':
