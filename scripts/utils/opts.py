@@ -27,8 +27,8 @@ def get_parser():
     parser.add_argument('--debug_mode', action='store_true',
                         help='launch ipdb debugger if script crashes.')
     
-    parser.add_argument('--load_reprs_path', required=False, type=str, nargs='+',
-                        help='previously extracted representations\' locations')
+    parser.add_argument('--load_reprs_path', required=False, type=str,
+                        help='previously extracted representations\' path')
 
     parser.add_argument('--save_reprs_path', required=False, type=str,
                         help='save the extracted representations to')
