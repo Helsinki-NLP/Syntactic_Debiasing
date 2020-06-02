@@ -13,6 +13,9 @@ def get_parser():
 
     parser.add_argument('--cuda', action='store_true',
                         help='whether to use a cuda device')
+
+    parser.add_argument('--seed', type=int,
+                        help='random seed to fix (optional)')
     
     parser.add_argument('--extract_only', action='store_true',
                         help='run only until the extraction and saving of representations')
