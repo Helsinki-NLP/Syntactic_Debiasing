@@ -4,6 +4,7 @@ import h5py
 import pickle
 import conllu
 import numpy as np
+import torch
 from utils.bertify import bertify
 from utils.logger import logger
 
