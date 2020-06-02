@@ -25,10 +25,10 @@ def train_set_split(cls1_instances, cls2_instances, cls1_words, cls2_words, is_l
         for i in range(n_sentences):
             if random.uniform(0, 1) < 1 - TEST_RATIO:
                 print(type(cls1_instances[i]))
-                train_set += cls1_instances[i] + cls2_instances[i]
+                train_set += [cls1_instances[i]] + [cls2_instances[i]]
                 print(f'sentence {i} to train')
             else:
-                test_set += cls1_instances[i] + cls2_instances[i]
+                test_set += [cls1_instances[i]] + [cls2_instances[i]]
                 print(f'sentence {i} to test')
 
     else: 
@@ -41,10 +41,10 @@ def train_set_split(cls1_instances, cls2_instances, cls1_words, cls2_words, is_l
             # assuming there is a single word coming from every sentence!
             # otherwise we wont use this constraint.
             if assignments[cls1_words[i]] == 'train':
-                train_set += cls1_instances[i] + cls2_instances[i]
+                train_set += [cls1_instances[i]] + [cls2_instances[i]]
                 print(f'word {cls1_words[i]} to train')
             else:
-                test_set += cls1_instances[i] + cls2_instances[i]
+                test_set += [cls1_instances[i]] + [cls2_instances[i]]
                 print(f'word {cls1_words[i]} to test')
 
     return train_set, test_set

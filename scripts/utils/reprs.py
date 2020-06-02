@@ -15,8 +15,7 @@ def loadh5file(load_path):
     logger.info(f'   loading embeddings from {load_path}')
     h5f = h5py.File(load_path, 'r')
     setlen = len(h5f)
-    loaded_reprs = [[h5f.get(str(i))[()]] for i in range(setlen)]
-    print(type(loaded_reprs[0]))
+    loaded_reprs = [torch.FloatTensor(h5f.get(str(i))[()]) for i in range(setlen)]
     h5f.close()
     return loaded_reprs
 
@@ -27,7 +26,7 @@ def saveh5file(representations, save_path):
     os.system(f'mkdir -p {os.path.dirname(save_path)}')
     with h5py.File(save_path, 'w') as fout:
         for idx,rps in enumerate(representations):
-            fout.create_dataset(str(idx), data=rps, dtype=list)
+            fout.create_dataset(str(idx), rps.shape, dtype='float32', data=rps)
 
 
 # ----- pickle file functions -----
@@ -159,12 +158,12 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, devic
                             WOI_active_form = active_token['form']
                             break
 
-                instance_1 = [np.stack([np.reshape(active_bert_enc[layer][:,WOI_active_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
+                instance_1 = np.stack([np.reshape(active_bert_enc[layer][:,WOI_active_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
                                                                                 for layer in range(bert.N_LAYERS)], \
-                                                                                axis=1)]
-                instance_2 = [np.stack([np.reshape(passive_bert_enc[layer][:,WOI_passive_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
+                                                                                axis=1)
+                instance_2 = np.stack([np.reshape(passive_bert_enc[layer][:,WOI_passive_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
                                                                                 for layer in range(bert.N_LAYERS)], \
-                                                                                axis=1)]
+                                                                                axis=1)
 
                 words_1 = [WOI_active_form]
                 words_2 = [WOI_passive_form]
