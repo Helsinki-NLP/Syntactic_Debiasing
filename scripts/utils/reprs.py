@@ -26,7 +26,7 @@ def saveh5file(representations, save_path):
     os.system(f'mkdir -p {os.path.dirname(save_path)}')
     with h5py.File(save_path, 'w') as fout:
         for idx,rps in enumerate(representations):
-            fout.create_dataset(str(idx), rps.shape, dtype='float32', data=rps)
+            fout.create_dataset(str(idx), data=rps)
 
 
 # ----- pickle file functions -----
