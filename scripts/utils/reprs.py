@@ -12,7 +12,7 @@ from utils.logger import logger
 # ----- h5 file functions -----
 def loadh5file(load_path):
     '''load embeddings and convert to list of tensors'''
-    logger.info('   loading from {0}'.format(load_path))
+    logger.info(f'   loading embeddings from {load_path}')
     h5f = h5py.File(load_path, 'r')
     setlen = len(h5f)
     loaded_reprs = [torch.FloatTensor(h5f.get(str(i))[()]) for i in range(setlen)]
@@ -32,10 +32,10 @@ def saveh5file(representations, save_path):
 # ----- pickle file functions -----
 def loadpickle(load_path):
     '''load words from pickle file'''
-    logger.info('   loading from {0}'.format(load_path))
+    logger.info(f'   loading words from {load_path}')
     with open(load_path, 'rb') as fin:
         words = pickle.load(fin)
-    return loaded_reprs
+    return words
 
 
 def savepickle(words, save_path):
