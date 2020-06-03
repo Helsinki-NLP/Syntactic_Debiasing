@@ -5,6 +5,7 @@ Code structure inspired from: Juan Raul Vazquez Carillo
 
 import sys
 import random
+import torch #FIXME
 from utils import opts
 from utils.logger import logger
 from utils import reprs
