@@ -49,6 +49,6 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, is_
             else:
                 X_test += [cls1_instances[i]] + [cls2_instances[i]]
                 Y_test += [labels['active']] * len(cls1_instances[i]) + [labels['passive']] * len(cls2_instances[i])
-
+                
 
     return X_train, Y_train, X_test, Y_test
