@@ -12,9 +12,11 @@ from utils import opts
 from utils.logger import logger
 from utils import reprs
 from utils import arrange_data
+import debiasing
 
 
-def  main(opt):
+
+def main(opt):
     device = torch.device('cuda' if opt.cuda else 'cpu') 
 
     #----- Loading data -----
@@ -68,13 +70,27 @@ def  main(opt):
         pass
 
     for dataset in opt.dataset:
-        train_set[dataset], test_set[dataset] = arrange_data.train_set_split(cls1_instances[dataset], cls2_instances[dataset],
+        X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset] = arrange_data.train_set_split(cls1_instances[dataset], cls2_instances[dataset],
                                                                              cls1_words[dataset], cls2_words[dataset], 
                                                                              opt.lexical_split)
 
 
     #----- Training -----
+    
+    # if specified, train/test with the train_on/test_on dataset
+    # else, use the default dataset for train and test
+    if opt.train_on:
+        train_dataset = opt.train_on
+    else:
+        train_dataset = dataset
 
+    if opt.test_on:
+        test_dataset = opt.test_on
+    else:
+        test_dataset = dataset
+
+    db = debiasing.Debiasing(classifier='LinearSVC', n_iterations=30)
+    P = db.train(X_train[train_dataset], Y_train[train_dataset], X_test[test_dataset], Y_test[test_dataset])
 
 
     #----- Logging results -----
