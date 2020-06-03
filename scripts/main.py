@@ -4,10 +4,7 @@ Code structure inspired from: Juan Raul Vazquez Carillo
 """
 
 import sys
-import torch
-import pickle
 import random
-from tqdm import tqdm
 from utils import opts
 from utils.logger import logger
 from utils import reprs
