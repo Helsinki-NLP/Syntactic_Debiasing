@@ -44,12 +44,13 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, lay
 
         assignments = {word: ('train' if (random.uniform(0, 1) < 1 - TEST_RATIO) else 'test') for word in vocabulary}
         for i in range(n_sentences):
-            # assuming there is a single word coming from every sentence!
-            # otherwise we wont use this constraint.
             new_X = np.concatenate([cls1_instances[i][:,layer,:].detach().squeeze(1 ).numpy(), cls2_instances[i][:,layer,:].detach().squeeze(1).numpy()], axis=0)
             new_Y = np.concatenate([np.zeros(cls1_instances[i].shape[0], dtype=int), np.ones(cls2_instances[i].shape[0], dtype=int)])
             
-            if assignments[cls1_words[i]] == 'train':
+            # assuming there is a single word coming from every sentence!
+            # otherwise we wont use this constraint.
+            single_cls1_word = cls1_words[i][0]
+            if assignments[single_cls1_word] == 'train':
                 X_train = np.concatenate([X_train, new_X], axis=0) if X_train.size else new_X
                 Y_train = np.concatenate([Y_train, new_Y]) if Y_train.size else new_Y
             else:
