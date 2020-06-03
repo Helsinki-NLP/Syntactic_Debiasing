@@ -1,8 +1,8 @@
 import sys
 import os
 
-sys.path.append("../../src/nullspace_projection/src/")
-import debias
+sys.path.append("../../src/nullspace_projection")
+from src import debias
 
 class Debiasing:
     def __init__(self, classifier='LinearSVC', n_iterations=30):
