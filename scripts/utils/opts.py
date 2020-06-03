@@ -45,6 +45,9 @@ def get_parser():
     parser.add_argument('--focus', required=True, default='verb',
                         help='which part of the sentence to focus on [verb [default] | subject | object | all')   
 
+    parser.add_argument('--layer', required=False, type=int,
+                        help='which layer of representations to debias on\' path')   
+
     parser.add_argument('--clauses_only', action='store_true',
                         help='use only the subject clause from the RNN dataset')
 

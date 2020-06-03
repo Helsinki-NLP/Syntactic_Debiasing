@@ -13,7 +13,6 @@ from utils import arrange_data
 import debiasing
 
 
-
 def main(opt):
     device = torch.device('cuda' if opt.cuda else 'cpu') 
 
@@ -60,16 +59,20 @@ def main(opt):
     #----- Train-Test Splits -----
 
     logger.info('Separating training and test sets')
-    train_set = {}
-    test_set = {}
+    X_train = {}
+    X_test = {}
+
+    Y_train = {}
+    Y_test = {}
 
     if opt.cross_dataset_lexical_split:
         # keep only the intersection of lexical items in both datasets
         pass
 
     for dataset in opt.dataset:
-        X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset] = arrange_data.train_set_split(cls1_instances[dataset], cls2_instances[dataset],
-                                                                             cls1_words[dataset], cls2_words[dataset], 
+        X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset] = arrange_data.train_test_split(cls1_instances[dataset], cls2_instances[dataset],
+                                                                             cls1_words[dataset], cls2_words[dataset],
+                                                                             opt.layer, 
                                                                              opt.lexical_split)
 
 
@@ -87,7 +90,7 @@ def main(opt):
     else:
         test_dataset = dataset
 
-    db = debiasing.Debiasing(classifier='LinearSVC', n_iterations=30)
+    db = debiasing.Debiasing(classifier='LinearSVC', n_iterations=40)
     P = db.train(X_train[train_dataset], Y_train[train_dataset], X_test[test_dataset], Y_test[test_dataset])
 
 

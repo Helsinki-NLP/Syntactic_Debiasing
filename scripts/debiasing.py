@@ -1,13 +1,25 @@
 import sys
 import os
 
+from sklearn import model_selection
+from sklearn import cluster
+from sklearn import metrics
+from sklearn.manifold import TSNE
+from sklearn.svm import LinearSVC, SVC
+from sklearn.linear_model import SGDClassifier, Perceptron, LogisticRegression, PassiveAggressiveClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.decomposition import PCA
+
 sys.path.append("../../src/nullspace_projection")
 from src import debias
 
 class Debiasing:
     def __init__(self, classifier='LinearSVC', n_iterations=30):
-        self.classifier = classifier
-        if self.classifier == 'LinearSVC':
+        self.n_iterations = n_iterations
+        if classifier == 'LinearSVC':
+            self.classifier = LinearSVC
             self.params = {'fit_intercept': False, 'class_weight': None, "dual": False, 'random_state': 0}
 
     def train(self, X_train, Y_train, X_test, Y_test):
