@@ -8,7 +8,6 @@ import random
 import argparse
 import logging
 import ipdb
-from utils.logger import logger
 from utils import reprs
 from utils import arrange_data
 import debiasing
@@ -18,38 +17,12 @@ def main(opt):
     
     #----- Loading data -----
 
-    cls1_name, cls2_name = opt.task.split('-')
-
-    cls1_instances = {}
-    cls2_instances = {}
-
-    cls1_words = {}
-    cls2_words = {}
-
     if opt.load_reprs_path:
-        for dataset in opt.dataset:
-            logging.info('Loading representations from ' + dataset + ' at ' + opt.load_reprs_path)
-
-            # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), 
-            # since every sentence can be of arbitrary length now
-            cls1_instances[dataset] = reprs.loadh5file(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
-            cls2_instances[dataset] = reprs.loadh5file(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
-
-            cls1_words[dataset] = reprs.loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.words.pkl')
-            cls2_words[dataset] = reprs.loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
+        logging.info('Loading representations')
+        cls1_instances, cls2_instances, cls1_words, cls2_words = reprs.load_representations(opt)        
     else:
-        for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
-            logging.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
-            cls1_instances[dataset], cls2_instances[dataset], cls1_words[dataset], cls2_words[dataset] \
-                                = reprs.extract(dataset, dataset_path, cls1_name, cls2_name,
-                                                opt.focus, opt.clauses_only, to_device=('cuda' if opt.cuda else 'cpu'))
-
-            logging.info('Saving representations to ' + dataset + ' at ' + opt.save_reprs_path)            
-            reprs.saveh5file(cls1_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
-            reprs.saveh5file(cls2_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
-
-            reprs.savepickle(cls1_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.words.pkl')
-            reprs.savepickle(cls2_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
+        logging.info('Extracting representations')
+        cls1_instances, cls2_instances, cls1_words, cls2_words = reprs.extract_representations(opt)
 
         if opt.extract_only:
             logging.info('Finishing...')
@@ -58,52 +31,22 @@ def main(opt):
 
     #----- Train-Test Splits -----
 
-    logger.info('Separating training and test sets')
-    X_train = {}
-    X_test = {}
-
-    Y_train = {}
-    Y_test = {}
-
     #FIXME: This assumes single lexical item from each example sentence for now, eg. a verb.
-    if opt.cross_dataset_lexical_split and opt.train_on and opt.test_on:
-        # keep only the intersection of lexical items in both datasets
-        shared_vocab = set([item[0] for item in cls2_words[opt.train_on]]).intersection( \
-                         set([item[0] for item in cls2_words[opt.test_on]])) # use the passive items, their forms are similar
+    if opt.use_shared_vocab and opt.train_on and opt.test_on:
+        logging.info('Restricting to shared vocabulary between the datasets')
+        cls1_instances, cls2_instances, cls1_words, cls2_words = arrange_data.restrict_vocab(cls1_instances, cls2_instances, cls1_words, cls2_words)
 
-        new_cls1_instances = {dataset: [] for dataset in opt.dataset}
-        new_cls2_instances = {dataset: [] for dataset in opt.dataset}
-
-        new_cls1_words = {dataset: [] for dataset in opt.dataset}
-        new_cls2_words = {dataset: [] for dataset in opt.dataset}
-
-        for dataset in opt.dataset:
-            for i in range(len(cls1_instances[dataset])):
-                passive_word = cls2_words[dataset][i][0]
-                if passive_word in shared_vocab:
-                    new_cls1_instances[dataset].append(cls1_instances[dataset][i])
-                    new_cls2_instances[dataset].append(cls2_instances[dataset][i])
-                    new_cls1_words[dataset].append(cls1_words[dataset][i])
-                    new_cls2_words[dataset].append(cls2_words[dataset][i])
-
-        cls1_instances = new_cls1_instances
-        cls2_instances = new_cls2_instances
-
-        cls1_words = new_cls1_words
-        cls2_words = new_cls2_words
-
-
-    for dataset in opt.dataset:
-        X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset] = arrange_data.train_test_split(cls1_instances[dataset], cls2_instances[dataset],
-                                                                             cls1_words[dataset], cls2_words[dataset],
-                                                                             opt.layer, 
-                                                                             opt.lexical_split)
-
-        logging.debug('\n\nClass 1 words in ' + dataset + '\n')
-        logging.debug(cls1_words[dataset])
-        logging.debug('\n\nClass 2 words in ' + dataset + '\n\n')
-        logging.debug(cls2_words[dataset])
-
+    logging.info('Separating training and test sets')
+    X_train, Y_train, X_test, Y_test = arrange_data.train_test_split(cls1_instances, cls2_instances,
+                                                                         cls1_words, cls2_words,
+                                                                         opt.dataset,
+                                                                         opt.layer, 
+                                                                         opt.lexical_split)
+    #for dataset in opt.dataset:
+    #    X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset] = arrange_data.train_test_split(cls1_instances[dataset], cls2_instances[dataset],
+    #                                                                         cls1_words[dataset], cls2_words[dataset],
+    #                                                                         opt.layer, 
+    #                                                                         opt.lexical_split)
 
     #----- Training -----
     
@@ -112,6 +55,7 @@ def main(opt):
     # if specified, train/test with the train_on/test_on dataset
     # else, use the default dataset for train and test
     if not (opt.train_on and opt.test_on):
+        dataset = opt.dataset[0]
         P = db.train(X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset])
 
     elif opt.transfer_classifier:
@@ -194,8 +138,8 @@ if __name__ == '__main__':
     parser.add_argument('--lexical_split', action='store_true',
                         help='enforces that same lexical entities go to the same train/test set split')
 
-    parser.add_argument('--cross_dataset_lexical_split', action='store_true',
-                        help='enforces that same lexical entities go to the same train/test set split')
+    parser.add_argument('--use_shared_vocab', action='store_true',
+                        help='restricts the different datasets to use only the instances with shared vocabulary')
 
     parser.add_argument('--train_on', required=False,
                         help='train on the given dataset [SICK | RNN]')

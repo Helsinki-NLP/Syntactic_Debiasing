@@ -12,7 +12,7 @@ from utils.bertify import bertify
 # ----- h5 file functions -----
 def loadh5file(load_path):
     '''load embeddings and convert to list of tensors'''
-    logging.info(f'   loading embeddings from {load_path}')
+    logging.debug(f'   loading embeddings from {load_path}')
     h5f = h5py.File(load_path, 'r')
     setlen = len(h5f)
     loaded_reprs = [torch.FloatTensor(h5f.get(str(i))[()]) for i in range(setlen)]
@@ -22,7 +22,7 @@ def loadh5file(load_path):
 
 def saveh5file(representations, save_path):
     '''save embeddings in h5 format'''
-    logging.info(f'     saving embeddings to {save_path}')
+    logging.debug(f'     saving embeddings to {save_path}')
     os.system(f'mkdir -p {os.path.dirname(save_path)}')
     with h5py.File(save_path, 'w') as fout:
         for idx,rps in enumerate(representations):
@@ -32,7 +32,7 @@ def saveh5file(representations, save_path):
 # ----- pickle file functions -----
 def loadpickle(load_path):
     '''load words from pickle file'''
-    logging.info(f'   loading words from {load_path}')
+    logging.debug(f'   loading words from {load_path}')
     with open(load_path, 'rb') as fin:
         words = pickle.load(fin)
     return words
@@ -40,7 +40,7 @@ def loadpickle(load_path):
 
 def savepickle(words, save_path):
     '''save words in pickle format'''
-    logging.info(f'     saving words to {save_path}')
+    logging.debug(f'     saving words to {save_path}')
     os.system(f'mkdir -p {os.path.dirname(save_path)}')
     with open(save_path, 'wb') as fout:
         pickle.dump(words, fout)
@@ -57,6 +57,8 @@ def connluify(lines):
         lines[i] = '\t'.join(tokens)+'\n'
     return lines
 
+
+# ----- auxilaries -----
 
 def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_device='cpu'):
     device = torch.device(to_device) 
@@ -189,3 +191,56 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
         pass
 
     return cls1_instances, cls2_instances, cls1_words, cls2_words
+
+
+# ----- API for this module -----
+
+def load_representations(opt):
+    cls1_name, cls2_name = opt.task.split('-')
+
+    cls1_instances = {}
+    cls2_instances = {}
+
+    cls1_words = {}
+    cls2_words = {}
+
+    for dataset in opt.dataset:
+        logging.info('Loading representations from ' + dataset + ' at ' + opt.load_reprs_path)
+
+        # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), 
+        # since every sentence can be of arbitrary length now
+        cls1_instances[dataset] = loadh5file(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
+        cls2_instances[dataset] = loadh5file(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
+
+        cls1_words[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.words.pkl')
+        cls2_words[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
+
+    return cls1_instances, cls2_instances, cls1_words, cls2_words
+
+
+def extract_representations(opt):
+    cls1_name, cls2_name = opt.task.split('-')
+
+    cls1_instances = {}
+    cls2_instances = {}
+
+    cls1_words = {}
+    cls2_words = {}
+
+    for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
+        logging.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
+        cls1_instances[dataset], cls2_instances[dataset], cls1_words[dataset], cls2_words[dataset] \
+                            = extract(dataset, dataset_path, cls1_name, cls2_name,
+                                      opt.focus, opt.clauses_only, to_device=('cuda' if opt.cuda else 'cpu'))
+
+        logging.info('Saving representations to ' + dataset + ' at ' + opt.save_reprs_path)            
+        saveh5file(cls1_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
+        saveh5file(cls2_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
+
+        savepickle(cls1_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.words.pkl')
+        savepickle(cls2_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
+
+    return cls1_instances, cls2_instances, cls1_words, cls2_words
+
+
+    
