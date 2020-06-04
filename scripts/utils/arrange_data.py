@@ -44,7 +44,7 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, lay
 
         assignments = {word: ('train' if (random.uniform(0, 1) < 1 - TEST_RATIO) else 'test') for word in vocabulary}
         for i in range(n_sentences):
-            new_X = np.concatenate([cls1_instances[i][:,layer,:].detach().squeeze(1 ).numpy(), cls2_instances[i][:,layer,:].detach().squeeze(1).numpy()], axis=0)
+            new_X = np.concatenate([cls1_instances[i][:,layer,:].detach().squeeze(1).numpy(), cls2_instances[i][:,layer,:].detach().squeeze(1).numpy()], axis=0)
             new_Y = np.concatenate([np.zeros(cls1_instances[i].shape[0], dtype=int), np.ones(cls2_instances[i].shape[0], dtype=int)])
             
             # assuming there is a single word coming from every sentence!
@@ -67,3 +67,10 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, lay
     print(Y_test)
 
     return X_train, Y_train, X_test, Y_test
+
+
+def combine_train_test(X_train, Y_train, X_test, Y_test):
+    X_combined = np.concatenate([X_train, X_test], axis=0)
+    Y_combined = np.concatenate([Y_train, Y_test])
+
+    return X_combined, Y_combined

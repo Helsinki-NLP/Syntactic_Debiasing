@@ -58,7 +58,9 @@ def connluify(lines):
     return lines
 
 
-def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, device):
+def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_device='cpu'):
+    device = torch.device(to_device) 
+
     # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), since every sentence can be of arbitrary length now
     cls1_instances = []
     cls2_instances = []
