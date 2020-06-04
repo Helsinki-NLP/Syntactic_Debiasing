@@ -6,6 +6,8 @@ Code structure inspired from: Juan Raul Vazquez Carillo
 import sys
 import random
 import argparse
+import logging
+import ipdb
 from utils.logger import logger
 from utils import reprs
 from utils import arrange_data
@@ -26,7 +28,7 @@ def main(opt):
 
     if opt.load_reprs_path:
         for dataset in opt.dataset:
-            logger.info('Loading representations from ' + dataset + ' at ' + opt.load_reprs_path)
+            logging.info('Loading representations from ' + dataset + ' at ' + opt.load_reprs_path)
 
             # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), 
             # since every sentence can be of arbitrary length now
@@ -37,12 +39,12 @@ def main(opt):
             cls2_words[dataset] = reprs.loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
     else:
         for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
-            logger.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
+            logging.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
             cls1_instances[dataset], cls2_instances[dataset], cls1_words[dataset], cls2_words[dataset] \
                                 = reprs.extract(dataset, dataset_path, cls1_name, cls2_name,
                                                 opt.focus, opt.clauses_only, to_device=('cuda' if opt.cuda else 'cpu'))
 
-            logger.info('Saving representations to ' + dataset + ' at ' + opt.save_reprs_path)            
+            logging.info('Saving representations to ' + dataset + ' at ' + opt.save_reprs_path)            
             reprs.saveh5file(cls1_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
             reprs.saveh5file(cls2_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
 
@@ -50,7 +52,7 @@ def main(opt):
             reprs.savepickle(cls2_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
 
         if opt.extract_only:
-            logger.info('Finishing...')
+            logging.info('Finishing...')
             sys.exit(0)
 
 
@@ -97,10 +99,10 @@ def main(opt):
                                                                              opt.layer, 
                                                                              opt.lexical_split)
 
-        print('\n\nClass 1 words in ' + dataset + '\n')
-        print(cls1_words[dataset])
-        print('\n\nClass 2 words in ' + dataset + '\n\n')
-        print(cls2_words[dataset])
+        logging.debug('\n\nClass 1 words in ' + dataset + '\n')
+        logging.debug(cls1_words[dataset])
+        logging.debug('\n\nClass 2 words in ' + dataset + '\n\n')
+        logging.debug(cls2_words[dataset])
 
 
     #----- Training -----
@@ -162,8 +164,8 @@ if __name__ == '__main__':
                         default=['/scratch/project_2002233/debiasing/data/SICK/Filtered'],
                         help='path to the raw dataset location. Defaults to puhti:SICK location')
 
-    parser.add_argument('--debug_mode', action='store_true',
-                        help='launch ipdb debugger if script crashes.')
+    parser.add_argument('--debug', action='store_true',
+                        help='debug-level logging, launch ipdb debugger if script crashes.')
     
     parser.add_argument('--load_reprs_path', required=False, type=str,
                         help='previously extracted representations\' path')
@@ -209,7 +211,8 @@ if __name__ == '__main__':
     if opt.seed:
         random.seed(opt.seed)
     
-    if opt.debug_mode:
+    if opt.debug:
+        logging.basicConfig(level=logging.DEBUG)
         with ipdb.launch_ipdb_on_exception():
             main(opt)
     else:

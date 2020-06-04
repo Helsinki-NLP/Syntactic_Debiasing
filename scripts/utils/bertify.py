@@ -1,6 +1,5 @@
 import sys
 import torch
-from utils.logger import logger
 from pytorch_pretrained_bert import BertTokenizer, BertModel, BertForMaskedLM
 
 

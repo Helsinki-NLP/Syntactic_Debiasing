@@ -2,6 +2,7 @@ import sys
 import os
 import numpy as np
 import random
+import logging
 
 TEST_RATIO = 0.3
 
@@ -58,13 +59,11 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, lay
                 Y_test = np.concatenate([Y_test, new_Y]) if Y_test.size else new_Y
 
 
-    print(X_train.shape)
-    print(Y_train.shape)
-    print(X_test.shape)
-    print(Y_test.shape)
+    logging.debug(X_train.shape)
+    logging.debug(Y_train.shape)
+    logging.debug(X_test.shape)
+    logging.debug(Y_test.shape)
 
-    print(Y_train)
-    print(Y_test)
 
     return X_train, Y_train, X_test, Y_test
 

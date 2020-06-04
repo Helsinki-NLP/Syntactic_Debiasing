@@ -5,14 +5,14 @@ import pickle
 import conllu
 import numpy as np
 import torch
+import logging
 from utils.bertify import bertify
-from utils.logger import logger
 
 
 # ----- h5 file functions -----
 def loadh5file(load_path):
     '''load embeddings and convert to list of tensors'''
-    logger.info(f'   loading embeddings from {load_path}')
+    logging.info(f'   loading embeddings from {load_path}')
     h5f = h5py.File(load_path, 'r')
     setlen = len(h5f)
     loaded_reprs = [torch.FloatTensor(h5f.get(str(i))[()]) for i in range(setlen)]
@@ -22,7 +22,7 @@ def loadh5file(load_path):
 
 def saveh5file(representations, save_path):
     '''save embeddings in h5 format'''
-    logger.info(f'     saving embeddings to {save_path}')
+    logging.info(f'     saving embeddings to {save_path}')
     os.system(f'mkdir -p {os.path.dirname(save_path)}')
     with h5py.File(save_path, 'w') as fout:
         for idx,rps in enumerate(representations):
@@ -32,7 +32,7 @@ def saveh5file(representations, save_path):
 # ----- pickle file functions -----
 def loadpickle(load_path):
     '''load words from pickle file'''
-    logger.info(f'   loading words from {load_path}')
+    logging.info(f'   loading words from {load_path}')
     with open(load_path, 'rb') as fin:
         words = pickle.load(fin)
     return words
@@ -40,7 +40,7 @@ def loadpickle(load_path):
 
 def savepickle(words, save_path):
     '''save words in pickle format'''
-    logger.info(f'     saving words to {save_path}')
+    logging.info(f'     saving words to {save_path}')
     os.system(f'mkdir -p {os.path.dirname(save_path)}')
     with open(save_path, 'wb') as fout:
         pickle.dump(words, fout)
@@ -170,8 +170,8 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
                 words_1 = [WOI_active_form]
                 words_2 = [WOI_passive_form]
 
-                logger.info('Active: ' + WOI_active_form)
-                logger.info('Passive: ' + WOI_passive_form)
+                logging.debug('Active: ' + WOI_active_form)
+                logging.debug('Passive: ' + WOI_passive_form)
 
 
             if focus == 'all':
