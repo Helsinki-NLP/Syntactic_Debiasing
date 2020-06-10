@@ -33,14 +33,41 @@ class Debiasing:
         print(X_test.shape)
         print(Y_test.shape)
 
-        P, rowspace_projs, Ws = debias.get_debiasing_projection(self.classifier, self.params, self.n_iterations, 768, is_autoregressive, min_acc,
+        self.P, rowspace_projs, Ws = debias.get_debiasing_projection(self.classifier, self.params, self.n_iterations, 768, is_autoregressive, min_acc,
                                                         X_train, Y_train, X_test, Y_test,
                                                         Y_train_main=None, Y_dev_main=None, 
                                                         by_class = False, dropout_rate = dropout_rate)
 
 
-        return P
+        return self.P
 
-    def clean_data(self, P, X):
-        X_cleaned = (P.dot(X.T))
+
+
+    def clean_data(self, X, P=None):
+        if P == None:
+            P = self.P
+
+        X_cleaned = (self.P.dot(X.T))
         return X_cleaned
+
+
+
+    def debias(self, X_train, Y_train, X_test, Y_test, train_dataset, test_dataset, is_transfer_projmatrix, is_transfer_classifier):
+        if not (is_transfer_projmatrix or is_transfer_classifier):
+            self.P = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[train_dataset], Y_test[train_dataset])
+
+        elif is_transfer_classifier:
+            # if set, we try the test dataset on the same classifier that is trained on the train dataset
+            self.P = self.train(X_train[opt.train_on], Y_train[opt.train_on], X_test[opt.test_on], Y_test[opt.test_on])
+        
+        elif is_transfer_projmatrix:
+            self.P = self.train(X_train[opt.train_on], Y_train[opt.train_on], X_test[opt.train_on], Y_test[opt.train_on])
+
+            # "clean" the test dataset:
+            X_train_cleaned = {opt.test_on: db.clean_data(X_train[opt.test_on], P)}
+            X_test_cleaned = {opt.test_on: db.clean_data(X_test[opt.test_on], P)}
+
+            # try to re-debias the "cleaned" dataset:
+            _ = self.train(X_train_cleaned[opt.test_on], Y_train[opt.test_on], X_test_cleaned[opt.test_on], Y_test[opt.test_on])
+
+        return self.P

@@ -177,7 +177,19 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
 
 
             if focus == 'all':
-                pass
+                cls1_wc = active_bert_enc[0].shape[1]
+                instance_1 = np.stack([np.reshape(active_bert_enc[layer][:,:,:],(cls1_wc,bert.ENC_DIM)).detach().cpu().numpy() \
+                                                                                for layer in range(bert.N_LAYERS)], \
+                                                                                axis=1)
+
+                cls2_wc = passive_bert_enc[0].shape[1]
+                instance_2 = np.stack([np.reshape(passive_bert_enc[layer][:,:,:],(cls2_wc,bert.ENC_DIM)).detach().cpu().numpy() \
+                                                                                for layer in range(bert.N_LAYERS)], \
+                                                                                axis=1)
+
+                words_1 = [cls1_token['form'] for cls1_token in cls1_tokens]
+                words_2 = [cls2_token['form'] for cls2_token in cls2_tokens]
+
 
 
             cls1_instances.append(instance_1)

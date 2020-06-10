@@ -5,6 +5,7 @@ import random
 import logging
 
 TEST_RATIO = 0.3
+ENC_DIM = 768
 
 def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, datasets, layer, is_lexical_split):
     X_train = {}
@@ -14,7 +15,7 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, dat
 
 
     for dataset in datasets:
-        
+
         X_train[dataset] = np.array([])
         X_test[dataset] = np.array([])
 
@@ -36,12 +37,13 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, dat
             # We must make sure all sentence goes into the same set
 
             for i in range(n_sentences):
-                new_X = np.concatenate([cls1_instances[dataset][i][:,layer,:].detach().squeeze(1).numpy(), cls2_instances[dataset][i][:,layer,:].detach().squeeze(1).numpy()], axis=0)
+                new_X = np.concatenate([cls1_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM), cls2_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM)], axis=0)
                 new_Y = np.concatenate([np.zeros(cls1_instances[dataset][i].shape[0], dtype=int), np.ones(cls2_instances[dataset][i].shape[0], dtype=int)])
 
                 if random.uniform(0, 1) < 1 - TEST_RATIO:
                     X_train[dataset] = np.concatenate([X_train[dataset], new_X], axis=0) if X_train[dataset].size else new_X
                     Y_train[dataset] = np.concatenate([Y_train[dataset], new_Y]) if Y_train[dataset].size else new_Y
+
                 else:
                     X_test[dataset] = np.concatenate([X_test[dataset], new_X], axis=0) if X_test[dataset].size else new_X
                     Y_test[dataset] = np.concatenate([Y_test[dataset], new_Y]) if Y_test[dataset].size else new_Y
@@ -53,7 +55,7 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, dat
 
             assignments = {word: ('train' if (random.uniform(0, 1) < 1 - TEST_RATIO) else 'test') for word in vocabulary}
             for i in range(n_sentences):
-                new_X = np.concatenate([cls1_instances[dataset][i][:,layer,:].detach().squeeze(1).numpy(), cls2_instances[dataset][i][:,layer,:].detach().squeeze(1).numpy()], axis=0)
+                new_X = np.concatenate([cls1_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM), cls2_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM)], axis=0)
                 new_Y = np.concatenate([np.zeros(cls1_instances[dataset][i].shape[0], dtype=int), np.ones(cls2_instances[dataset][i].shape[0], dtype=int)])
                 
                 # assuming there is a single word coming from every sentence!

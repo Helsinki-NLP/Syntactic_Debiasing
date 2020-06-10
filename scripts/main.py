@@ -11,6 +11,7 @@ import ipdb
 from utils import reprs
 from utils import arrange_data
 import debiasing
+import vectorize
 
 
 def main(opt):
@@ -40,7 +41,7 @@ def main(opt):
     X_train, Y_train, X_test, Y_test = arrange_data.train_test_split(cls1_instances, cls2_instances,
                                                                          cls1_words, cls2_words,
                                                                          opt.dataset,
-                                                                         opt.layer, 
+                                                                         opt.layer-1, 
                                                                          opt.lexical_split)
     #for dataset in opt.dataset:
     #    X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset] = arrange_data.train_test_split(cls1_instances[dataset], cls2_instances[dataset],
@@ -48,32 +49,24 @@ def main(opt):
     #                                                                         opt.layer, 
     #                                                                         opt.lexical_split)
 
-    #----- Training -----
+    #----- Debiasing -----
     
-    db = debiasing.Debiasing(classifier='LinearSVC', n_iterations=30)
+    if opt.debias:
+        db = debiasing.Debiasing(classifier='LinearSVC', n_iterations=30)
+        if not (opt.train_on and opt.test_on):
+            opt.train_on = opt.datasets[0]
+            opt.test_on = opt.datasets[0]
+        db.debias(X_train, Y_train, X_test, Y_test, opt.train_on, opt.test_on, opt.transfer_projmatrix, opt.transfer_classifier)
 
-    # if specified, train/test with the train_on/test_on dataset
-    # else, use the default dataset for train and test
-    if not (opt.train_on and opt.test_on):
-        dataset = opt.dataset[0]
-        P = db.train(X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset])
-
-    elif opt.transfer_classifier:
-        # if set, we try the test dataset on the same classifier that is trained on the train dataset
-        P = db.train(X_train[opt.train_on], Y_train[opt.train_on], X_test[opt.test_on], Y_test[opt.test_on])
     
-    else:
-        P = db.train(X_train[opt.train_on], Y_train[opt.train_on], X_test[opt.train_on], Y_test[opt.train_on])
+    #----- Vector Explorations -----
 
-        # "clean" the test dataset:
-        X_train_cleaned = {opt.test_on: db.clean_data(X_train[opt.test_on], P)}
-        X_test_cleaned = {opt.test_on: db.clean_data(X_test[opt.test_on], P)}
-
-        # try to re-debias the "cleaned" dataset:
-        P_second = db.train(X_train_cleaned[opt.test_on], Y_train[opt.test_on], X_test_cleaned[opt.test_on], Y_test[opt.test_on])
-
-
-
+    if opt.vector_fun:
+        vc = vectorize.Vectorize(cls1_instances, cls2_instances, cls1_words, cls2_words, opt.dataset)
+        #vc.extract_diffvectors(opt.dataset, opt.layer, plotting_on=opt.plot_results)
+        #vc.plot_word_senses('playing', 'SICK', with_debiasing=db)
+        vc.plot_distances_to_diff('pouring', 'SICK')
+        
     #----- Logging results -----
 
     output_dir = f'{opt.outdir}/{opt.dataset}/{opt.task}'
@@ -95,22 +88,10 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, required=True, default=['SICK'], nargs='+',
                         help='dataset to use [SICK (default) | SICK_tensecorr (manually tense-corrected) | RNN]')
 
-    parser.add_argument('--cuda', action='store_true',
-                        help='whether to use a cuda device')
-
-    parser.add_argument('--seed', type=int,
-                        help='random seed to fix (optional)')
-    
-    parser.add_argument('--extract_only', action='store_true',
-                        help='run only until the extraction and saving of representations')
-
     parser.add_argument('--dataset_path', required=False, type=str, nargs='+',
                         default=['/scratch/project_2002233/debiasing/data/SICK/Filtered'],
-                        help='path to the raw dataset location. Defaults to puhti:SICK location')
+                        help='path to the raw dataset location. Defaults to puhti:SICK location')  
 
-    parser.add_argument('--debug', action='store_true',
-                        help='debug-level logging, launch ipdb debugger if script crashes.')
-    
     parser.add_argument('--load_reprs_path', required=False, type=str,
                         help='previously extracted representations\' path')
 
@@ -118,18 +99,27 @@ if __name__ == '__main__':
                         help='save the extracted representations to')
 
     parser.add_argument('--outdir', type=str, required=False, default='../outputs/',
-                        help='path to dir where output logs will be saved')
-
-    parser.add_argument('--plot_results', action='store_true',
-                        help='if active, will plot visualizations of the data')
+                        help='path to dir where output logs will be saved')     
 
     parser.add_argument('--task', required=True, default='active-passive',
                         help='which syntactic information to debias, default active-passive')    
 
     parser.add_argument('--focus', required=True, default='verb',
-                        help='which part of the sentence to focus on [verb [default] | subject | object | all')   
+                        help='which part of the sentence to focus on [verb [default] | subject | object | all')                                                
+    
+    parser.add_argument('--extract_only', action='store_true',
+                        help='run only until the extraction and saving of representations')
 
-    parser.add_argument('--layer', required=False, type=int,
+    parser.add_argument('--debias', action='store_true',
+                        help='whether to perform debiasing')
+
+    parser.add_argument('--vector_fun', action='store_true',
+                        help='whether to have fun with vectors')
+
+    parser.add_argument('--plot_results', action='store_true',
+                        help='if active, will plot visualizations of the data')
+
+    parser.add_argument('--layer', required=False, type=int, default=6,
                         help='which layer of representations to debias on\' path')   
 
     parser.add_argument('--clauses_only', action='store_true',
@@ -147,14 +137,30 @@ if __name__ == '__main__':
     parser.add_argument('--test_on', required=False,
                         help='test on the given dataset [SICK | RNN]')   
 
+    parser.add_argument('--transfer_projmatrix', action='store_true',
+                        help='if set, we learn the projection matrix on the train dataset, then use it to clean the test dataset')   
+
     parser.add_argument('--transfer_classifier', action='store_true',
                         help='if set, we try the test dataset on the same classifier that is trained on the train dataset')   
+
+    parser.add_argument('--cuda', action='store_true',
+                        help='whether to use a cuda device')
+
+    parser.add_argument('--seed', type=int,
+                        help='random seed to fix (optional)')  
+
+    parser.add_argument('--debug', action='store_true',
+                        help='debug-level logging, launch ipdb debugger if script crashes.')                          
 
     opt = parser.parse_args()
 
     if opt.seed:
         random.seed(opt.seed)
     
+    if opt.transfer_projmatrix and opt.transfer_classifier:
+        logging.error('--transfer_projmatrix and --transfer_classifier cannot be set at the same time')
+        sys.exit(1)
+
     if opt.debug:
         logging.basicConfig(level=logging.DEBUG)
         with ipdb.launch_ipdb_on_exception():
