@@ -35,7 +35,7 @@ def main(opt):
     #FIXME: This assumes single lexical item from each example sentence for now, eg. a verb.
     if opt.use_shared_vocab and opt.train_on and opt.test_on:
         logging.info('Restricting to shared vocabulary between the datasets')
-        cls1_instances, cls2_instances, cls1_words, cls2_words = arrange_data.restrict_vocab(cls1_instances, cls2_instances, cls1_words, cls2_words)
+        cls1_instances, cls2_instances, cls1_words, cls2_words = arrange_data.restrict_vocab(cls1_instances, cls2_instances, cls1_words, cls2_words, opt)
 
     logging.info('Separating training and test sets')
     X_train, Y_train, X_test, Y_test = arrange_data.train_test_split(cls1_instances, cls2_instances,
@@ -52,10 +52,10 @@ def main(opt):
     #----- Debiasing -----
     
     if opt.debias:
-        db = debiasing.Debiasing(classifier='LinearSVC', n_iterations=30)
+        db = debiasing.Debiasing(classifier='LogisticRegression', n_iterations=5)
         if not (opt.train_on and opt.test_on):
-            opt.train_on = opt.datasets[0]
-            opt.test_on = opt.datasets[0]
+            opt.train_on = opt.dataset[0]
+            opt.test_on = opt.dataset[0]
         db.debias(X_train, Y_train, X_test, Y_test, opt.train_on, opt.test_on, opt.transfer_projmatrix, opt.transfer_classifier)
 
     
@@ -64,8 +64,8 @@ def main(opt):
     if opt.vector_fun:
         vc = vectorize.Vectorize(cls1_instances, cls2_instances, cls1_words, cls2_words, opt.dataset)
         #vc.extract_diffvectors(opt.dataset, opt.layer, plotting_on=opt.plot_results)
-        #vc.plot_word_senses('playing', 'SICK', with_debiasing=db)
-        vc.plot_distances_to_diff('pouring', 'SICK')
+        vc.plot_word_senses('playing', 'SICK', distance_fnc=vc.layerwise_eucdist, with_debiasing=db)
+        #vc.plot_distances_to_diff('pouring', 'SICK')
         
     #----- Logging results -----
 
@@ -141,7 +141,10 @@ if __name__ == '__main__':
                         help='if set, we learn the projection matrix on the train dataset, then use it to clean the test dataset')   
 
     parser.add_argument('--transfer_classifier', action='store_true',
-                        help='if set, we try the test dataset on the same classifier that is trained on the train dataset')   
+                        help='if set, we try the test dataset on the same classifier that is trained on the train dataset')  
+
+    parser.add_argument('--random_labes', type=int,
+                        help='classify with random labels (baseline 1)')                                                
 
     parser.add_argument('--cuda', action='store_true',
                         help='whether to use a cuda device')

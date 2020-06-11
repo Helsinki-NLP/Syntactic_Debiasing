@@ -21,6 +21,9 @@ class Debiasing:
         if classifier == 'LinearSVC':
             self.classifier = LinearSVC
             self.params = {'fit_intercept': False, 'class_weight': None, "dual": False, 'random_state': 0}
+        elif classifier == 'LogisticRegression':
+            self.classifier = LogisticRegression
+            self.params = {'fit_intercept': True, 'penalty': 'l2', "dual": False, 'random_state': 0}
 
 
     def train(self, X_train, Y_train, X_test, Y_test):
@@ -58,16 +61,17 @@ class Debiasing:
 
         elif is_transfer_classifier:
             # if set, we try the test dataset on the same classifier that is trained on the train dataset
-            self.P = self.train(X_train[opt.train_on], Y_train[opt.train_on], X_test[opt.test_on], Y_test[opt.test_on])
+            self.P = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[test_dataset], Y_test[test_dataset])
         
         elif is_transfer_projmatrix:
-            self.P = self.train(X_train[opt.train_on], Y_train[opt.train_on], X_test[opt.train_on], Y_test[opt.train_on])
+            self.P = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[train_dataset], Y_test[train_dataset])
 
             # "clean" the test dataset:
-            X_train_cleaned = {opt.test_on: db.clean_data(X_train[opt.test_on], P)}
-            X_test_cleaned = {opt.test_on: db.clean_data(X_test[opt.test_on], P)}
+            X_train_cleaned = {opt.test_on: db.clean_data(X_train[test_dataset], P)}
+            X_test_cleaned = {opt.test_on: db.clean_data(X_test[test_dataset], P)}
 
             # try to re-debias the "cleaned" dataset:
-            _ = self.train(X_train_cleaned[opt.test_on], Y_train[opt.test_on], X_test_cleaned[opt.test_on], Y_test[opt.test_on])
+            _ = self.train(X_train_cleaned[test_dataset], Y_train[test_dataset], X_test_cleaned[test_dataset], Y_test[test_dataset])
 
         return self.P
+        

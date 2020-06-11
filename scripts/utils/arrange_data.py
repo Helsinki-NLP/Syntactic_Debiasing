@@ -84,7 +84,7 @@ def combine_train_test(X_train, Y_train, X_test, Y_test):
     return X_combined, Y_combined
 
 
-def restrict_vocab(cls1_instances, cls2_instances, cls1_words, cls2_words):
+def restrict_vocab(cls1_instances, cls2_instances, cls1_words, cls2_words, opt):
     logging.info('Restricting the two datasets to the same vocabulary')
 
     X_train = {}
@@ -92,11 +92,6 @@ def restrict_vocab(cls1_instances, cls2_instances, cls1_words, cls2_words):
 
     Y_train = {}
     Y_test = {}
-
-    logging.debug('\n\nClass 1 words in ' + dataset + '\n')
-    logging.debug(cls1_words[dataset])
-    logging.debug('\n\nClass 2 words in ' + dataset + '\n\n')
-    logging.debug(cls2_words[dataset])
 
     # keep only the intersection of lexical items in both datasets
     shared_vocab = set([item[0] for item in cls2_words[opt.train_on]]).intersection( \

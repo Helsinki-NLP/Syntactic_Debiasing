@@ -108,8 +108,8 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
         #print(cls1_tokens[0]['head'])     3
         #print(cls1_tokens[0]['deprel'])   det
 
-        print(cls1_sentence)
-        print(cls1_bert_tokenization)
+        logging.debug(cls2_sentence)
+        logging.debug(cls2_bert_tokenization)
 
 
         # ----- Active-Passive Task -----
