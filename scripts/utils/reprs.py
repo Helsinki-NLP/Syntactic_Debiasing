@@ -70,6 +70,8 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
     # These will be list of lists of tokens, one list of tokens per sentence.
     cls1_words = []
     cls2_words = []
+    cls1_ids = []
+    cls2_ids = []    
 
     bert = bertify(device)
 
@@ -108,8 +110,9 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
         #print(cls1_tokens[0]['head'])     3
         #print(cls1_tokens[0]['deprel'])   det
 
+        logging.debug(cls1_sentence)
         logging.debug(cls2_sentence)
-        logging.debug(cls2_bert_tokenization)
+        #logging.debug(cls2_bert_tokenization)
 
 
         # ----- Active-Passive Task -----
@@ -123,17 +126,18 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
             if focus != 'all':
                 if focus == 'verb':
                     for passive_token in passive_tokens:
-                        if passive_token['deprel'] == 'ROOT':
-                            WOI_active_id = passive_token['id']
+                        if passive_token['deprel'].upper() == 'ROOT':
+                            WOI_passive_id = passive_token['id']
                             WOI_passive_form = passive_token['form']
                             break
                     for active_token in active_tokens:
-                        if active_token['deprel'] == 'ROOT':
-                            WOI_passive_id = active_token['id']
+                        if active_token['deprel'].upper() == 'ROOT':
+                            WOI_active_id = active_token['id']
                             WOI_active_form = active_token['form']
                             break
 
                 if focus == 'subject':
+                    WOI_passive_id = -1
                     for passive_token in passive_tokens:
                         if passive_token['form'] == 'by':
                             WOI_passive_id = passive_token['head']
@@ -141,26 +145,35 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
                             break
                     for passive_token in passive_tokens:
                         if passive_token['id'] == WOI_passive_id:
-                            WOI_form = passive_token['form']
-                            WOI_passive_form = passive_token['form']
+                            WOI_form = passive_token['form'].lower()
+                            WOI_passive_form = passive_token['form'].lower()
                             break
+                    if WOI_passive_id == -1:
+                        continue
                     for active_token in active_tokens:
-                        if active_token['form'] == WOI_form:
+                        if active_token['form'].lower() == WOI_form:
                             WOI_active_id = active_token['id']
-                            WOI_active_form = active_token['form']
+                            WOI_active_form = active_token['form'].lower()
                             break
 
                 if focus == 'object':
+                    WOI_passive_id = -1
                     for passive_token in passive_tokens:
-                        if passive_token['deprel'] == 'nsubjpass':
+                        if passive_token['deprel'] == 'nsubj:pass' or passive_token['deprel'] == 'nsubjpass':
                             WOI_passive_id = passive_token['id']
-                            WOI_passive_form = passive_token['form']
+                            WOI_passive_form = passive_token['form'].lower()
                             break
+                    if WOI_passive_id == -1:
+                        continue
+                    WOI_active_id = -1
                     for active_token in active_tokens:
-                        if active_token['form'] == WOI_form and active_token['deprel'] == 'dobj':
+                        if active_token['form'].lower() == WOI_passive_form and (active_token['deprel'] == 'dobj' or active_token['deprel'] == 'obj'):
                             WOI_active_id = active_token['id']
-                            WOI_active_form = active_token['form']
+                            WOI_active_form = active_token['form'].lower()
                             break
+                    if WOI_active_id == -1:
+                        continue
+                
 
                 instance_1 = np.stack([np.reshape(active_bert_enc[layer][:,WOI_active_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
                                                                                 for layer in range(bert.N_LAYERS)], \
@@ -168,6 +181,9 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
                 instance_2 = np.stack([np.reshape(passive_bert_enc[layer][:,WOI_passive_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
                                                                                 for layer in range(bert.N_LAYERS)], \
                                                                                 axis=1)
+
+                ids_1 = [WOI_active_id]
+                ids_2 = [WOI_passive_id]
 
                 words_1 = [WOI_active_form]
                 words_2 = [WOI_passive_form]
@@ -186,7 +202,7 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
                 instance_2 = np.stack([np.reshape(passive_bert_enc[layer][:,:,:],(cls2_wc,bert.ENC_DIM)).detach().cpu().numpy() \
                                                                                 for layer in range(bert.N_LAYERS)], \
                                                                                 axis=1)
-
+                
                 words_1 = [cls1_token['form'] for cls1_token in cls1_tokens]
                 words_2 = [cls2_token['form'] for cls2_token in cls2_tokens]
 
@@ -198,11 +214,14 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
             cls1_words.append(words_1)
             cls2_words.append(words_2)
 
+            cls1_ids.append(ids_1)
+            cls2_ids.append(ids_2)
+
 
     if dataset == 'RNN' and clauses_only:
         pass
 
-    return cls1_instances, cls2_instances, cls1_words, cls2_words
+    return cls1_instances, cls2_instances, cls1_words, cls2_words, cls1_ids, cls2_ids
 
 
 # ----- API for this module -----
@@ -216,6 +235,10 @@ def load_representations(opt):
     cls1_words = {}
     cls2_words = {}
 
+    cls1_ids = {}
+    cls2_ids = {}
+
+
     for dataset in opt.dataset:
         logging.info('Loading representations from ' + dataset + ' at ' + opt.load_reprs_path)
 
@@ -227,7 +250,10 @@ def load_representations(opt):
         cls1_words[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.words.pkl')
         cls2_words[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
 
-    return cls1_instances, cls2_instances, cls1_words, cls2_words
+        cls1_ids[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.ids.pkl')
+        cls2_ids[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.ids.pkl')
+
+    return cls1_instances, cls2_instances, cls1_words, cls2_words, cls1_ids, cls2_ids
 
 
 def extract_representations(opt):
@@ -239,9 +265,12 @@ def extract_representations(opt):
     cls1_words = {}
     cls2_words = {}
 
+    cls1_ids = {}
+    cls2_ids = {}   
+
     for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
         logging.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
-        cls1_instances[dataset], cls2_instances[dataset], cls1_words[dataset], cls2_words[dataset] \
+        cls1_instances[dataset], cls2_instances[dataset], cls1_words[dataset], cls2_words[dataset], cls1_ids[dataset], cls2_ids[dataset] \
                             = extract(dataset, dataset_path, cls1_name, cls2_name,
                                       opt.focus, opt.clauses_only, to_device=('cuda' if opt.cuda else 'cpu'))
 
@@ -252,7 +281,11 @@ def extract_representations(opt):
         savepickle(cls1_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.words.pkl')
         savepickle(cls2_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
 
-    return cls1_instances, cls2_instances, cls1_words, cls2_words
+        savepickle(cls1_ids[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.ids.pkl')
+        savepickle(cls2_ids[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.ids.pkl')
+
+
+    return cls1_instances, cls2_instances, cls1_words, cls2_words, cls1_ids, cls2_ids
 
 
     

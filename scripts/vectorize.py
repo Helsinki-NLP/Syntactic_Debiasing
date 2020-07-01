@@ -16,7 +16,23 @@ ENC_DIM = 768
 class Vectorize():
     # FIXME: assumes one single word from each sentence at the moment.
 
-    def __init__(self, cls1_instances, cls2_instances, cls1_words, cls2_words, datasets):
+    def __init__(self):
+
+        self.avg_sim_corr1_corr2 = np.array([])
+        self.avg_sim_corr1_random_occ = np.array([])
+        self.avg_sim_corr1_random_not_occ = np.array([])
+        self.avg_sim_corr1_active = np.array([])
+        self.avg_sim_corr1_any = np.array([])
+
+        self.avg_sim_cleancorr1_cleancorr2 = np.array([])
+        self.avg_sim_cleancorr1_clean_random_occ = np.array([])
+        self.avg_sim_cleancorr1_clean_random_not_occ = np.array([])
+        self.avg_sim_cleancorr1_clean_active = np.array([])
+        self.avg_sim_cleancorr1_clean_any = np.array([])
+
+
+
+    def set_data(self, cls1_instances, cls2_instances, cls1_words, cls2_words, cls1_ids, cls2_ids, datasets):
         self.cls1_instances = {}
         self.cls2_instances = {}
 
@@ -29,14 +45,15 @@ class Vectorize():
         self.cls1_words = cls1_words
         self.cls2_words = cls2_words
 
+        self.cls1_ids = cls1_ids
+        self.cls2_ids = cls2_ids
+
         self.datasets = datasets
         self.vocabulary = set([item[0] for dataset in datasets for item in cls1_words[dataset]] \
                             + [item[0] for dataset in datasets for item in cls2_words[dataset]])
 
         self.diffvectors = {dataset: np.array([]) for dataset in datasets}
         self.diffclasses = {dataset: {word: np.array([]) for word in self.vocabulary} for dataset in datasets}
-
-
 
     def extract_diffvectors(self, datasets, layer, plotting_on='True'):
         print('extracting')
@@ -112,7 +129,7 @@ class Vectorize():
 
 
 
-    def plot_word_senses(self, word, dataset, distance_fnc, with_debiasing=None):
+    def calc_word_senses(self, word, dataset, distance_fnc, with_debiasing=None):
             
             
             # find random word
@@ -124,20 +141,24 @@ class Vectorize():
 
             # multiplying single words with P, or taking cleaned vectors matrix and indexing from there?
 
-            avg_sim_corr1_corr2 = np.zeros((N_LAYERS,1))
-            avg_sim_corr1_random_occ = np.zeros((N_LAYERS,1))
-            avg_sim_corr1_random_not_occ = np.zeros((N_LAYERS,1))
-            avg_sim_corr1_mean = np.zeros((N_LAYERS,1))
+            acc_sim_corr1_corr2 = np.zeros((N_LAYERS,1))
+            acc_sim_corr1_random_occ = np.zeros((N_LAYERS,1))
+            acc_sim_corr1_random_not_occ = np.zeros((N_LAYERS,1))
+            acc_sim_corr1_active = np.zeros((N_LAYERS,1))
+            acc_sim_corr1_any = np.zeros((N_LAYERS,1))
 
-            avg_sim_cleancorr1_cleancorr2 = np.zeros((N_LAYERS,1))
-            avg_sim_cleancorr1_clean_random_occ = np.zeros((N_LAYERS,1))
-            avg_sim_cleancorr1_clean_random_not_occ = np.zeros((N_LAYERS,1))
-            avg_sim_cleancorr1_cleanmean = np.zeros((N_LAYERS,1))
+            acc_sim_cleancorr1_cleancorr2 = np.zeros((N_LAYERS,1))
+            acc_sim_cleancorr1_clean_random_occ = np.zeros((N_LAYERS,1))
+            acc_sim_cleancorr1_clean_random_not_occ = np.zeros((N_LAYERS,1))
+            acc_sim_cleancorr1_clean_active = np.zeros((N_LAYERS,1))
+            acc_sim_cleancorr1_clean_any = np.zeros((N_LAYERS,1))
 
             word_count = 0
-            for sentence in self.cls1_words[dataset]:
-                for word in sentence:
-                    if word[-3:] == 'ing':
+            for si, sentence in enumerate(self.cls1_words[dataset]):
+                for wi, word in enumerate(sentence):
+                    #print(wi+1, self.cls1_ids[dataset][si][0])
+                    #if wi+1 == self.cls1_ids[dataset][si][0]:
+                        print('word is ', word)
                         word_count += 1
 
                         # take corresponding occurrences of word
@@ -145,6 +166,7 @@ class Vectorize():
 
                         # find sentence_idx, word_idx pairs for various cases:
                         all_occurrences = [(i, self.cls1_words[dataset][i].index(word)) for i in range(len(self.cls1_words[dataset])) if word in self.cls1_words[dataset][i]]
+                        print(all_occurrences)
                         if len(all_occurrences) == 1:
                             continue
 
@@ -154,10 +176,23 @@ class Vectorize():
                         not_occurrences = [(i, j) for i in range(len(self.cls1_words[dataset])) for j in range(len(self.cls1_words[dataset][i])) if word not in self.cls1_words[dataset][i]]
                         random_not_occurrence = random.choice(not_occurrences)
 
+                        random_active_sidx = random.choice(range(len(self.cls1_words[dataset])))
+                        random_active_widx = random.choice(range(len(self.cls1_words[dataset][random_active_sidx])))
+
+                        random_any_class = random.choice([1, 2])
+                        if random_any_class == 1:
+                            random_any_sidx = random.choice(range(len(self.cls1_words[dataset])))
+                            random_any_widx = random.choice(range(len(self.cls1_words[dataset][random_active_sidx])))
+                        else:
+                            random_any_sidx = random.choice(range(len(self.cls2_words[dataset])))
+                            random_any_widx = random.choice(range(len(self.cls2_words[dataset][random_active_sidx])))
+
                         # Before-Cleaning Vectors
                         sidx, widx = corresponding_occurrence
                         vec_corr_1 = self.cls1_instances[dataset][sidx][widx,:,:]
+                        print('vec_corr_1', vec_corr_1)
                         vec_corr_2 = self.cls2_instances[dataset][sidx][widx,:,:]
+                        print('vec_corr_2', vec_corr_2)
 
                         sidx, widx = random_occurrence
                         vec_random_occ = self.cls1_instances[dataset][sidx][widx,:,:]
@@ -165,60 +200,109 @@ class Vectorize():
                         sidx, widx = random_not_occurrence
                         vec_random_not_occ = self.cls1_instances[dataset][sidx][widx,:,:]
 
-                        vec_mean = np.zeros((1,N_LAYERS,ENC_DIM))
-                        for sidx in range(len(self.cls1_instances[dataset])):
-                                vec_mean += np.mean(self.cls1_instances[dataset][sidx], axis=0) / len(self.cls1_instances[dataset])
-                        vec_mean = vec_mean.reshape(N_LAYERS,ENC_DIM)
 
-                        avg_sim_corr1_corr2          += distance_fnc(vec_corr_1, vec_corr_2)
-                        avg_sim_corr1_random_occ     += distance_fnc(vec_corr_1, vec_random_occ)
-                        avg_sim_corr1_random_not_occ += distance_fnc(vec_corr_1, vec_random_not_occ)
-                        avg_sim_corr1_mean           += distance_fnc(vec_corr_1, vec_mean)
+                        #vec_mean = np.zeros((1,N_LAYERS,ENC_DIM))
+                        #for sidx in range(len(self.cls1_instances[dataset])):
+                        #        vec_mean += np.mean(self.cls1_instances[dataset][sidx], axis=0) / len(self.cls1_instances[dataset])
+                        #vec_mean = vec_mean.reshape(N_LAYERS,ENC_DIM)
+                        sidx, widx = random_active_sidx, random_active_widx
+                        vec_random_active = self.cls1_instances[dataset][random_active_sidx][random_active_widx,:,:]
+
+                        sidx, widx = random_any_sidx, random_any_widx
+                        if random_any_class == 1:
+                            vec_random_any = self.cls1_instances[dataset][random_active_sidx][random_active_widx,:,:]                        
+                        else:
+                            vec_random_any = self.cls2_instances[dataset][random_active_sidx][random_active_widx,:,:]                        
+
+                        acc_sim_corr1_corr2          += distance_fnc(vec_corr_1, vec_corr_2)
+                        acc_sim_corr1_random_occ     += distance_fnc(vec_corr_1, vec_random_occ)
+                        acc_sim_corr1_random_not_occ += distance_fnc(vec_corr_1, vec_random_not_occ)
+                        acc_sim_corr1_active         += distance_fnc(vec_corr_1, vec_random_active)
+                        acc_sim_corr1_any            += distance_fnc(vec_corr_1, vec_random_any)
 
 
                         if with_debiasing:
                             # After-Cleaning Vectos:
                             clean_corr_1          = with_debiasing.clean_data(vec_corr_1)
+                            print('clean_corr_1', clean_corr_1)
                             clean_corr_2          = with_debiasing.clean_data(vec_corr_2)
+                            print('clean_corr_2', clean_corr_2)
                             clean_random_occ      = with_debiasing.clean_data(vec_random_occ)
                             clean_random_not_occ  = with_debiasing.clean_data(vec_random_not_occ)
-                            clean_mean            = with_debiasing.clean_data(vec_mean)
-
-                            avg_sim_cleancorr1_cleancorr2           += distance_fnc(clean_corr_1, clean_corr_2)
-                            avg_sim_cleancorr1_clean_random_occ     += distance_fnc(clean_corr_1, clean_random_occ)
-                            avg_sim_cleancorr1_clean_random_not_occ += distance_fnc(clean_corr_1, clean_random_not_occ)
-                            avg_sim_cleancorr1_cleanmean            += distance_fnc(clean_corr_1, clean_mean)
+                            clean_active             = with_debiasing.clean_data(vec_random_active)
+                            clean_any             = with_debiasing.clean_data(vec_random_any)
 
 
-            avg_sim_corr1_corr2 /= word_count
-            avg_sim_corr1_random_occ /= word_count
-            avg_sim_corr1_random_not_occ /= word_count
-            avg_sim_corr1_mean /= word_count
+                            acc_sim_cleancorr1_cleancorr2           += distance_fnc(clean_corr_1, clean_corr_2)
+                            acc_sim_cleancorr1_clean_random_occ     += distance_fnc(clean_corr_1, clean_random_occ)
+                            acc_sim_cleancorr1_clean_random_not_occ += distance_fnc(clean_corr_1, clean_random_not_occ)
+                            acc_sim_cleancorr1_clean_active         += distance_fnc(clean_corr_1, clean_active)
+                            acc_sim_cleancorr1_clean_any            += distance_fnc(clean_corr_1, clean_any)
 
-            avg_sim_cleancorr1_cleancorr2 /= word_count
-            avg_sim_cleancorr1_clean_random_occ /= word_count
-            avg_sim_cleancorr1_clean_random_not_occ /= word_count
-            avg_sim_cleancorr1_cleanmean /= word_count
 
+            
+            if self.avg_sim_corr1_corr2.size == 0:
+                self.avg_sim_corr1_corr2                     = acc_sim_corr1_corr2 / word_count
+                self.avg_sim_corr1_random_occ                = acc_sim_corr1_random_occ / word_count
+                self.avg_sim_corr1_random_not_occ            = acc_sim_corr1_random_not_occ / word_count
+                self.avg_sim_corr1_active                    = acc_sim_corr1_active / word_count
+                self.avg_sim_corr1_any                       = acc_sim_corr1_any / word_count
+
+                self.avg_sim_cleancorr1_cleancorr2           = acc_sim_cleancorr1_cleancorr2 / word_count
+                self.avg_sim_cleancorr1_clean_random_occ     = acc_sim_cleancorr1_clean_random_occ / word_count
+                self.avg_sim_cleancorr1_clean_random_not_occ = acc_sim_cleancorr1_clean_random_not_occ / word_count
+                self.avg_sim_cleancorr1_clean_active         = acc_sim_cleancorr1_clean_active / word_count
+                self.avg_sim_cleancorr1_clean_any            = acc_sim_cleancorr1_clean_any / word_count
+
+            else:
+                print(self.avg_sim_corr1_corr2.shape)
+                print(acc_sim_corr1_corr2.shape)
+                self.avg_sim_corr1_corr2          = np.concatenate((self.avg_sim_corr1_corr2, (acc_sim_corr1_corr2 / word_count)), axis=1) 
+                self.avg_sim_corr1_random_occ     = np.concatenate((self.avg_sim_corr1_random_occ, (acc_sim_corr1_random_occ / word_count)), axis=1)
+                self.avg_sim_corr1_random_not_occ = np.concatenate((self.avg_sim_corr1_random_not_occ, (acc_sim_corr1_random_not_occ / word_count)), axis=1)
+                self.avg_sim_corr1_active         = np.concatenate((self.avg_sim_corr1_active, (acc_sim_corr1_active / word_count)), axis=1)
+                self.avg_sim_corr1_any            = np.concatenate((self.avg_sim_corr1_any, (acc_sim_corr1_any / word_count)), axis=1)
+
+                self.avg_sim_cleancorr1_cleancorr2           = np.concatenate((self.avg_sim_cleancorr1_cleancorr2, (acc_sim_cleancorr1_cleancorr2 / word_count)), axis=1)
+                self.avg_sim_cleancorr1_clean_random_occ     = np.concatenate((self.avg_sim_cleancorr1_clean_random_occ, (acc_sim_cleancorr1_clean_random_occ / word_count)), axis=1)
+                self.avg_sim_cleancorr1_clean_random_not_occ = np.concatenate((self.avg_sim_cleancorr1_clean_random_not_occ, (acc_sim_cleancorr1_clean_random_not_occ / word_count)), axis=1)
+                self.avg_sim_cleancorr1_clean_active         = np.concatenate((self.avg_sim_cleancorr1_clean_active, (acc_sim_cleancorr1_clean_active / word_count)), axis=1)
+                self.avg_sim_cleancorr1_clean_any            = np.concatenate((self.avg_sim_cleancorr1_clean_any, (acc_sim_cleancorr1_clean_any / word_count)), axis=1)
+
+
+    def plot_word_senses(self, focus, is_with_debiasing=False):
 
             # Plot all
             fig=plt.figure()
 
-            plt.plot(range(N_LAYERS), avg_sim_corr1_corr2, 'r', linestyle='solid', label='verb_1a - verb_1p')
-            plt.plot(range(N_LAYERS), avg_sim_corr1_random_occ, 'b', linestyle='solid', label='verb_1a - verb_2a')
-            plt.plot(range(N_LAYERS), avg_sim_corr1_random_not_occ, 'g', linestyle='solid', label='verb_1a - other_verb_a')
-            plt.plot(range(N_LAYERS), avg_sim_corr1_mean, 'k', linestyle='solid', label='verb_1a - mean_verb_a')
+            print('self.avg_sim_corr1_corr2', self.avg_sim_corr1_corr2)
+            print('self.avg_sim_cleancorr1_cleancorr2', self.avg_sim_cleancorr1_cleancorr2)
 
-            if with_debiasing:
-                plt.plot(range(N_LAYERS), avg_sim_cleancorr1_cleancorr2, 'r', linestyle='dotted',label='cln_verb_1a - cln_verb_1p')
-                plt.plot(range(N_LAYERS), avg_sim_cleancorr1_clean_random_occ, 'b', linestyle='dotted', label='cln_verb_1a - cln_verb_2a')
-                plt.plot(range(N_LAYERS), avg_sim_cleancorr1_clean_random_not_occ, 'g', linestyle='dotted', label='cln_verb_1a - cln_other_verb_a')
-                plt.plot(range(N_LAYERS), avg_sim_cleancorr1_cleanmean, 'k', linestyle='dotted', label='cln_verb_1a - cln_mean_verb_a')
+            plt.plot(range(N_LAYERS), np.mean(self.avg_sim_corr1_corr2, axis=1), 'r', linestyle='dotted', label=f'{focus}_1a - {focus}_1p')
+            plt.plot(range(N_LAYERS), np.mean(self.avg_sim_corr1_random_occ, axis=1), 'b', linestyle='dotted', label=f'{focus}_1a - {focus}_2a')
+            plt.plot(range(N_LAYERS), np.mean(self.avg_sim_corr1_random_not_occ, axis=1), 'g', linestyle='dotted', label=f'{focus}_1a - other_verb_a')
+            plt.plot(range(N_LAYERS), np.mean(self.avg_sim_corr1_active, axis=1), 'c', linestyle='dotted', label=f'{focus}_1a - random_word_a')
+            plt.plot(range(N_LAYERS), np.mean(self.avg_sim_corr1_any, axis=1), 'k', linestyle='dotted', label=f'{focus}_1a - random_word')
 
-            plt.title(f'{dataset} dataset: Average of All Verbs')
+            if is_with_debiasing:
+                plt.plot(range(N_LAYERS), np.mean(self.avg_sim_cleancorr1_cleancorr2, axis=1), 'r', linestyle='solid',label=f'clean_{focus}_1a - clean_{focus}_1p')
+                plt.plot(range(N_LAYERS), np.mean(self.avg_sim_cleancorr1_clean_random_occ, axis=1), 'b', linestyle='solid', label=f'clean_{focus}_1a - clean_{focus}_2a')
+                plt.plot(range(N_LAYERS), np.mean(self.avg_sim_cleancorr1_clean_random_not_occ, axis=1), 'g', linestyle='solid', label=f'clean_{focus}_1a - clean_other_{focus}_a')
+                plt.plot(range(N_LAYERS), np.mean(self.avg_sim_cleancorr1_clean_active, axis=1), 'c', linestyle='solid', label=f'clean_{focus}_1a - clean_random_word_a')
+                plt.plot(range(N_LAYERS), np.mean(self.avg_sim_cleancorr1_clean_any, axis=1), 'k', linestyle='solid', label=f'clean_{focus}_1a - clean_random_word')
+
+            #plt.title(f'{dataset} dataset: Average of All Verbs')
             plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fontsize='x-small', ncol=2, fancybox=True, shadow=True)
-            plt.xticks(range(1, N_LAYERS+1))
+            plt.xticks(range(N_LAYERS), range(1,N_LAYERS+1))
+
+            plt.xlabel('Layers')
+            plt.ylabel('Euclidean distance')
+            plt.ylim((3, 27))
+            plt.yticks([5, 10, 15, 20, 25])            
             plt.show()
+
+
+
 
 
     def plot_distances_to_diff(self, ref_word, dataset):

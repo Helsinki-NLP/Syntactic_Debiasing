@@ -1,0 +1,13 @@
+
+Extracting representations:
+python main.py --dataset RNN-priming-short-5000 --dataset_path ../data/RNN-Priming-short/ --save_reprs_path ../representations/ --task active-passive --focus subject --extract_only --debug
+
+Saving splits:
+python main.py --dataset RNN-priming-short-5000 --load_reprs_path ../representations/ --task active-passive --focus subject --layer 12 --save_splits --different_split_exp_count 20
+
+Obtaining word-sense graphs:
+python main.py --dataset SICK --load_reprs_path ../representations/ --task active-passive --focus verb --debias Goldberg --lexical_split --test_on SICK --train_on SICK --vector_fun --different_split_exp_count 20 --layer 12
+
+
+Plotting MDS:
+python main.py --dataset SICK --load_reprs_path ../representations/ --task active-passive --focus verb --debias Goldberg --lexical_split --test_on SICK --train_on SICK --different_split_exp_count 1 --layer 12 --plot
