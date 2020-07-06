@@ -7,7 +7,7 @@ import logging
 TEST_RATIO = 0.3
 ENC_DIM = 768
 
-def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, datasets, layer, is_lexical_split, is_random_labels, focus, experiment_number):
+def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, datasets, is_lexical_split, is_random_labels, focus, experiment_number):
     X_train = {}
     X_test = {}
     Y_train = {}
@@ -47,8 +47,8 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, dat
             # We must make sure all sentence goes into the same set
 
             for i in range(n_sentences):
-                cls1_instance = cls1_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM)
-                cls2_instance = cls2_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM)
+                cls1_instance = cls1_instances[dataset][i][:,:,:].detach().numpy()
+                cls2_instance = cls2_instances[dataset][i][:,:,:].detach().numpy()
                 
                 new_X = np.concatenate([cls1_instance, cls2_instance], axis=0)
                 new_Y = np.concatenate([np.zeros(cls1_instance.shape[0], dtype=int), np.ones(cls1_instance.shape[0], dtype=int)])
@@ -76,8 +76,8 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, dat
             assignments = {word: ('train' if (random.uniform(0, 1) < 1 - TEST_RATIO) else 'test') for word in vocabulary}
             
             for i in range(n_sentences):
-                cls1_instance = cls1_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM)
-                cls2_instance = cls2_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM)
+                cls1_instance = cls1_instances[dataset][i][:,:,:].detach().numpy()
+                cls2_instance = cls2_instances[dataset][i][:,:,:].detach().numpy()
 
                 new_X = np.concatenate([cls1_instance, cls2_instance], axis=0)
                 new_Y = np.concatenate([np.zeros(cls1_instance.shape[0], dtype=int), np.ones(cls2_instance.shape[0], dtype=int)])
@@ -112,8 +112,8 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, dat
             for i in range(n_sentences):
                 word = cls1_words[dataset][i][0]
 
-                cls1_instance = cls1_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM)
-                cls2_instance = cls2_instances[dataset][i][:,layer,:].detach().numpy().reshape(-1,ENC_DIM)
+                cls1_instance = cls1_instances[dataset][i][:,:,:].detach().numpy()
+                cls2_instance = cls2_instances[dataset][i][:,:,:].detach().numpy()
 
                 new_X = np.concatenate([cls1_instance, cls2_instance], axis=0)
                 
@@ -145,20 +145,20 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, dat
 
         # save the splits:
         import pickle
-        with open(f'../splits/X_train_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'wb') as fout: pickle.dump(X_train[dataset], fout)
-        with open(f'../splits/Y_train_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'wb') as fout: pickle.dump(Y_train[dataset], fout)
-        with open(f'../splits/X_test_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'wb') as fout: pickle.dump(X_test[dataset], fout)
-        with open(f'../splits/Y_test_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'wb') as fout: pickle.dump(Y_test[dataset], fout)
+        with open(f'../splits/X_train_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(X_train[dataset], fout)
+        with open(f'../splits/Y_train_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(Y_train[dataset], fout)
+        with open(f'../splits/X_test_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(X_test[dataset], fout)
+        with open(f'../splits/Y_test_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(Y_test[dataset], fout)
 
-        with open(f'../splits/cls1_train_instances_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'wb') as fout: pickle.dump(cls1_train_instances[dataset], fout)
-        with open(f'../splits/cls2_train_instances_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'wb') as fout: pickle.dump(cls2_train_instances[dataset], fout)
-        with open(f'../splits/cls1_test_instances_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'wb') as fout: pickle.dump(cls1_test_instances[dataset], fout)
-        with open(f'../splits/cls2_test_instances_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'wb') as fout: pickle.dump(cls2_test_instances[dataset], fout)
+        with open(f'../splits/cls1_train_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls1_train_instances[dataset], fout)
+        with open(f'../splits/cls2_train_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls2_train_instances[dataset], fout)
+        with open(f'../splits/cls1_test_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls1_test_instances[dataset], fout)
+        with open(f'../splits/cls2_test_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls2_test_instances[dataset], fout)
 
     return X_train, Y_train, X_test, Y_test, cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances
 
 
-def load_splits(datasets, focus, layer, experiment_number):
+def load_splits(datasets, focus, experiment_number):
     X_train = {}
     X_test = {}
     Y_train = {}
@@ -172,15 +172,15 @@ def load_splits(datasets, focus, layer, experiment_number):
     # load the splits:
     import pickle
     for dataset in datasets:
-        with open(f'../splits/X_train_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'rb') as fin: X_train[dataset] = pickle.load(fin)
-        with open(f'../splits/Y_train_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'rb') as fin: Y_train[dataset] = pickle.load(fin)
-        with open(f'../splits/X_test_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'rb') as fin:  X_test[dataset] = pickle.load(fin)
-        with open(f'../splits/Y_test_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'rb') as fin:  Y_test[dataset] = pickle.load(fin)
+        with open(f'../splits/X_train_{dataset}_exp_{experiment_number}_{focus}.pkl', 'rb') as fin: X_train[dataset] = pickle.load(fin)
+        with open(f'../splits/Y_train_{dataset}_exp_{experiment_number}_{focus}.pkl', 'rb') as fin: Y_train[dataset] = pickle.load(fin)
+        with open(f'../splits/X_test_{dataset}_exp_{experiment_number}_{focus}.pkl', 'rb') as fin:  X_test[dataset] = pickle.load(fin)
+        with open(f'../splits/Y_test_{dataset}_exp_{experiment_number}_{focus}.pkl', 'rb') as fin:  Y_test[dataset] = pickle.load(fin)
 
-        with open(f'../splits/cls1_train_instances_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'rb') as fin: cls1_train_instances[dataset] = pickle.load(fin)
-        with open(f'../splits/cls2_train_instances_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'rb') as fin: cls2_train_instances[dataset] = pickle.load(fin)
-        with open(f'../splits/cls1_test_instances_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'rb') as fin:  cls1_test_instances[dataset] = pickle.load(fin)
-        with open(f'../splits/cls2_test_instances_{dataset}_exp_{experiment_number}_{focus}_layer-{layer}.pkl', 'rb') as fin:  cls2_test_instances[dataset] = pickle.load(fin)
+        with open(f'../splits/cls1_train_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'rb') as fin: cls1_train_instances[dataset] = pickle.load(fin)
+        with open(f'../splits/cls2_train_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'rb') as fin: cls2_train_instances[dataset] = pickle.load(fin)
+        with open(f'../splits/cls1_test_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'rb') as fin:  cls1_test_instances[dataset] = pickle.load(fin)
+        with open(f'../splits/cls2_test_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'rb') as fin:  cls2_test_instances[dataset] = pickle.load(fin)
 
     return X_train, Y_train, X_test, Y_test, cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances
 

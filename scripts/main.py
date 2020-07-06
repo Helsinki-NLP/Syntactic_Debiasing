@@ -4,6 +4,8 @@ Code structure inspired from: Juan Raul Vazquez Carillo
 """
 
 import sys
+import os
+import glob
 import random
 import argparse
 import logging
@@ -44,8 +46,7 @@ def main(opt):
                 cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
                     = arrange_data.train_test_split(cls1_instances, cls2_instances,
                                                  cls1_words, cls2_words,
-                                                 opt.dataset,
-                                                 opt.layer-1, 
+                                                 opt.dataset, 
                                                  opt.lexical_split,
                                                  opt.random_labels,
                                                  opt.focus,
@@ -57,13 +58,15 @@ def main(opt):
     #    for REG_COEFF in [0.1, 0.01, 0.001, 0.0001, 0.00001]:
     for N_ITERATIONS in [3]:
         for REG_COEFF in [0.00001]:  #0.00000001
-            logfile = open('../results/classification_acc/' + opt.train_on + f'/reg_coeff_{REG_COEFF}_it_{N_ITERATIONS}_{opt.focus}_layer-{opt.layer}.txt', 'w')
+            logfile_base = '../results/transfer_learning/' + opt.train_on + '-2-' + opt.test_on + f'/{opt.test_on}_reg_coeff_{REG_COEFF}_it_{N_ITERATIONS}_{opt.focus}'
+            for f in glob.glob(logfile_base + '*'):
+                os.remove(f)
 
             for experiment_number in range(opt.different_split_exp_count):
                 
                 X_train, Y_train, X_test, Y_test, \
                     cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
-                        = arrange_data.load_splits(opt.dataset, opt.focus, opt.layer-1, experiment_number)
+                        = arrange_data.load_splits(opt.dataset, opt.focus, experiment_number)
 
                 #for dataset in opt.dataset:
                 #    X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset] = arrange_data.train_test_split(cls1_instances[dataset], cls2_instances[dataset],
@@ -79,24 +82,26 @@ def main(opt):
                 if opt.debias == 'Goldberg':
                     for j in range(opt.same_split_exp_count):
                         db = debiasing.Goldberg_Debiasing(classifier='LogisticRegression', n_iterations=N_ITERATIONS, reg_coeff=REG_COEFF)
-                        db.debias(X_train, Y_train, X_test, Y_test, opt.train_on, opt.test_on, opt.transfer_projmatrix, opt.transfer_classifier, opt.plot, logfile)
+                        db.debias(X_train, Y_train, X_test, Y_test, opt.train_on, opt.test_on, opt.transfer_projmatrix, opt.transfer_classifier, opt.plot_mds, logfile_base)
 
-                elif opt.debias == 'GBDD':
-                    db = debiasing.GBDD_Debiasing(cls1_train_instances[opt.train_on], cls2_train_instances[opt.train_on], 
-                                                  cls1_test_instances[opt.test_on], cls2_test_instances[opt.test_on])
-                    db.calc_bias_dir_vec()
-                    db.plot_before_after(cls1_test_instances[opt.test_on], 
-                                         cls2_test_instances[opt.test_on])
+                # FIXME: correct for layer-wise cleaning.
+                #elif opt.debias == 'GBDD':
+                #    db = debiasing.GBDD_Debiasing(cls1_train_instances[opt.train_on], cls2_train_instances[opt.train_on], 
+                #                                  cls1_test_instances[opt.test_on], cls2_test_instances[opt.test_on])
+                #    db.calc_bias_dir_vec()
+                #    db.plot_before_after(cls1_test_instances[opt.test_on], 
+                #                         cls2_test_instances[opt.test_on])
 
-                elif opt.debias == 'BAM':
-                    db = debiasing.BAM_Debiasing()
-                    db.debias(X_train, Y_train, X_test, Y_test)        
+                # to-implement
+                #elif opt.debias == 'BAM':
+                #    db = debiasing.BAM_Debiasing()
+                #    db.debias(X_train, Y_train, X_test, Y_test)        
                 
                 #----- MDS plotting ------
-                if opt.plot:
-                    plotting.plot_mds(cls1_instances[opt.test_on], cls2_instances[opt.test_on])
+                if opt.plot_mds:
+                    plotting.project(cls1_instances[opt.test_on], cls2_instances[opt.test_on], 'tsne')
                     if opt.debias:
-                        plotting.plot_mds(cls1_instances[opt.test_on], cls2_instances[opt.test_on], with_debiasing=db)
+                        plotting.project(cls1_instances[opt.test_on], cls2_instances[opt.test_on], 'tsne', with_debiasing=db)
 
                 #----- Vector Explorations -----
 
@@ -107,12 +112,18 @@ def main(opt):
                     #vc.extract_diffvectors(opt.dataset, opt.layer, plotting_on=opt.plot_results)
                     
                     vc.set_data(cls1_instances, cls2_instances, cls1_words, cls2_words, cls1_ids, cls2_ids, opt.dataset)
-                    vc.calc_word_senses('playing', opt.dataset[0], distance_fnc=vc.layerwise_eucdist, with_debiasing=db)
-
-                    if experiment_number == opt.different_split_exp_count - 1:
-                        vc.plot_word_senses(opt.focus, is_with_debiasing=True)
+                    
+                    if opt.plot_vectors:
+                        vc.plot_word_senses_from_logs('../results/distances/', ['SICK', 'RNN-priming-short-1000'], ['verb', 'subject', 'object'])
+                    else:
+                        if experiment_number < opt.different_split_exp_count - 1:
+                            vc.calc_word_senses('playing', opt.dataset[0], distance_fnc=vc.layerwise_eucdist, with_debiasing=db)
+                        else:
+                            vc.calc_word_senses('playing', opt.dataset[0], distance_fnc=vc.layerwise_eucdist, with_debiasing=db, logfile=f'../results/distances/{opt.dataset[0]}_{opt.focus}_distances.pkl')
+                    #    vc.plot_word_senses(opt.focus, opt.dataset[0], is_with_debiasing=True)
 
                     #vc.plot_distances_to_diff('pouring', 'SICK')
+
                     
                 #----- Logging results -----
 
@@ -166,8 +177,8 @@ if __name__ == '__main__':
     parser.add_argument('--plot_results', action='store_true',
                         help='if active, will plot visualizations of the data')
 
-    parser.add_argument('--layer', required=False, type=int, default=6,
-                        help='which layer of representations to debias on\' path')   
+    #parser.add_argument('--layer', required=False, type=int, default=6,
+    #                    help='which layer of representations to debias on\' path')   
 
     parser.add_argument('--clauses_only', action='store_true',
                         help='use only the subject clause from the RNN dataset')
@@ -202,8 +213,11 @@ if __name__ == '__main__':
     parser.add_argument('--debug', action='store_true',
                         help='debug-level logging, launch ipdb debugger if script crashes.')  
 
-    parser.add_argument('--plot', action='store_true',
-                        help='shall plot the MDS before and after cleaning.')                              
+    parser.add_argument('--plot_mds', action='store_true',
+                        help='shall plot the MDS before and after cleaning.')     
+
+    parser.add_argument('--plot_vectors', action='store_true',
+                        help='shall plot the vector distances before and after cleaning.')                                                  
 
     parser.add_argument('--different_split_exp_count', type=int, default=1,
                         help='how many times to calculate a different train-test split and repeat the experiments.') 

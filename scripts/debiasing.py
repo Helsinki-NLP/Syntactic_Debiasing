@@ -14,7 +14,6 @@ from sklearn.decomposition import PCA
 import logging
 from utils import plotting
 
-from utils.plotting import plot_mds, plot_pca
 sys.path.append("../../src/nullspace_projection")
 from src import debias
 
@@ -29,8 +28,9 @@ class Goldberg_Debiasing:
             self.classifier = LogisticRegression
             self.params = {'fit_intercept': True, 'penalty': 'l2', 'C': reg_coeff, "dual": False, 'random_state': 0, 'solver': 'lbfgs'}
 
+        self.P = np.zeros((12, 768, 768))
 
-    def train(self, X_train, Y_train, X_test, Y_test):
+    def train(self, X_train, Y_train, X_test, Y_test, layer, is_set_P=True):
         min_acc = 0
         is_autoregressive = True
         dropout_rate = 0
@@ -40,70 +40,80 @@ class Goldberg_Debiasing:
         print(X_test.shape)
         print(Y_test.shape)
 
-        self.P, rowspace_projs, Ws, iteration_0_acc = debias.get_debiasing_projection(self.classifier, self.params, self.n_iterations, 768, is_autoregressive, min_acc,
-                                                        X_train, Y_train, X_test, Y_test,
+        P, rowspace_projs, Ws, iteration_accs = debias.get_debiasing_projection(self.classifier, self.params, self.n_iterations, 768, is_autoregressive, min_acc,
+                                                        X_train[:,layer,:], Y_train, X_test[:,layer,:], Y_test,
                                                         Y_train_main=None, Y_dev_main=None, 
                                                         by_class = False, dropout_rate = dropout_rate)
 
 
-        return self.P, iteration_0_acc
+        if is_set_P:
+            self.P[layer,:,:] = P
+
+        return self.P[layer,:,:], iteration_accs
 
 
 
     def clean_data(self, X, P=None):
         if P == None:
             P = self.P
-        print('P.shape:', P.shape)
-        print('X.shape:', X.shape)
-        X_cleaned = (P.dot(X.T)).T
-        print('X_cleaned.shape:', X_cleaned.shape)
+
+        print(X.shape)
+        print(P.shape)
+
+        X_cleaned = np.empty_like(X)
+
+        for layer in [5]:
+            if len(X.shape) == 3:
+                X_cleaned[:,layer,:] = (P[layer,:,:].dot(X[:,layer,:].T)).T
+            else:
+                X_cleaned[layer,:] = (P[layer].dot(X[layer,:].T)).T
+
         return X_cleaned
 
 
 
-    def debias(self, X_train, Y_train, X_test, Y_test, train_dataset, test_dataset, is_transfer_projmatrix, is_transfer_classifier, is_plot, logfile):
+    def debias(self, X_train, Y_train, X_test, Y_test, train_dataset, test_dataset, is_transfer_projmatrix, is_transfer_classifier, is_plot, logfile_base):
         if not (is_transfer_projmatrix or is_transfer_classifier):
-            self.P, iteration_accs = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[train_dataset], Y_test[train_dataset])
-
-            for acc in iteration_accs:
-                logfile.write('%.2f ' % acc)
-            logfile.write('\n')
-
-            '''if is_plot:
-
-                cls1_uncleaned = np.array([data for i, data in enumerate(X_train[test_dataset]) if Y_train[test_dataset][i] == 0] 
-                               + [data for i, data in enumerate(X_test[test_dataset]) if Y_test[test_dataset][i] == 0])
-                cls2_uncleaned = np.array([data for i, data in enumerate(X_train[test_dataset]) if Y_train[test_dataset][i] == 1]
-                               + [data for i, data in enumerate(X_test[test_dataset]) if Y_test[test_dataset][i] == 1])
-                
-                plotting.plot_mds(cls1_uncleaned, cls2_uncleaned)
-
-                X_train_cleaned = self.clean_data(X_train[test_dataset])
-                X_test_cleaned = self.clean_data(X_test[test_dataset])
-
-                cls1_cleaned = np.array([data for i, data in enumerate(X_train_cleaned) if Y_train[test_dataset][i] == 0]
-                             + [data for i, data in enumerate(X_test_cleaned) if Y_test[test_dataset][i] == 0])
-                cls2_cleaned = np.array([data for i, data in enumerate(X_train_cleaned) if Y_train[test_dataset][i] == 1]
-                             + [data for i, data in enumerate(X_test_cleaned) if Y_test[test_dataset][i] == 1])
-
-                plotting.plot_mds(cls1_cleaned, cls2_cleaned)
-            '''
+            for layer in range(12):
+                logfile = open(f'{logfile_base}_layer-{layer}.txt', 'a') 
+                P, iteration_accs = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[train_dataset], Y_test[train_dataset], layer, is_set_P=True)
+                for acc in iteration_accs:
+                    logfile.write('%.2f ' % acc)
+                logfile.write('\n')
+                logfile.close()
 
         elif is_transfer_classifier:
             # if set, we try the test dataset on the same classifier that is trained on the train dataset
             self.P, _ = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[test_dataset], Y_test[test_dataset])
         
         elif is_transfer_projmatrix:
-            self.P, iteration_accs_ds1 = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[train_dataset], Y_test[train_dataset])
+
+            for layer in [5]:
+                logfile = open(f'{logfile_base}_layer-{layer}_original.txt', 'w') 
+            
+                P, iteration_accs_ds1 = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[train_dataset], Y_test[train_dataset], layer, is_set_P=True)
+
+                for acc in iteration_accs_ds1:
+                    logfile.write('%.2f ' % acc)
+                logfile.write('\n')
+                logfile.close()
+
 
             # "clean" the test dataset:
-            X_train_cleaned = {test_dataset: self.clean_data(X_train[test_dataset], self.P)}
-            X_test_cleaned = {test_dataset: self.clean_data(X_test[test_dataset], self.P)}
+            X_train_cleaned = {test_dataset: self.clean_data(X_train[test_dataset])}
+            X_test_cleaned = {test_dataset: self.clean_data(X_test[test_dataset])}
 
-            # try to re-debias the "cleaned" dataset:
-            _, iteration_accs_ds2 = self.train(X_train_cleaned[test_dataset], Y_train[test_dataset], X_test_cleaned[test_dataset], Y_test[test_dataset])
+            for layer in [5]:
 
-            logfile.write('%.2f %.2f\n' % (iteration_accs_ds1[0], iteration_accs_ds2[0]))
+                logfile = open(f'{logfile_base}_layer-{layer}_cleaned.txt', 'w') 
+
+                # try to re-debias the "cleaned" dataset:
+                _, iteration_accs_ds2 = self.train(X_train_cleaned[test_dataset], Y_train[test_dataset], X_test_cleaned[test_dataset], Y_test[test_dataset], layer, is_set_P=False)
+
+                for acc in iteration_accs_ds2:
+                    logfile.write('%.2f ' % acc)
+                logfile.write('\n')
+                logfile.close()
 
         return self.P
 
