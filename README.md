@@ -21,34 +21,30 @@ _You can use the checked-out repository at /path/to/project/github/_
     $ cd /path/to/project/github/scripts
     $ module load pytorch/1.2.0
 
-#### To extract representations:
 
-Eg. SICK dataset:
+##Extracting representations:
+python main.py --dataset RNN-priming-short-5000 --dataset_path ../data/RNN-Priming-short/ --save_reprs_path ../representations/ --task active-passive --focus subject --extract_only --debug
 
-    $ python main.py --extract_only \ 
-                    --dataset SICK \
-                    --dataset_path /path/to/project/data/SICK/Filtered/ \
-                    --save_reprs_path /path/to/project/representations/ \
-                    --task active-passive \
-                    --focus verb
+##Saving splits:
+python main.py --dataset RNN-priming-short-5000 --load_reprs_path ../representations/ --task active-passive --focus subject --layer 12 --save_splits --different_split_exp_count 20
 
-Eg. SICK dataset + RNN dataset:
-
-    $ python main.py --extract_only \ 
-                    --dataset SICK RNN \
-                    --dataset_path /path/to/project/data/SICK/Filtered/ \
-                                   /path/to/project/data/RNN-Priming/combined/ \
-                    --save_reprs_path /path/to/project/representations/ \
-                    --task active-passive \
-                    --focus verb
-
-#### To run with previously extracted representations:
+##Obtaining word-sense graphs:
+python main.py --dataset SICK --load_reprs_path ../representations/ --task active-passive --focus verb --debias Goldberg --lexical_split --test_on SICK --train_on SICK --vector_fun --exp_count 20 --layer 12
 
 
-#### Optional arguments:
+##Plotting MDS:
+python main.py --dataset SICK --load_reprs_path ../representations/ --task active-passive --focus verb --debias Goldberg --lexical_split --test_on SICK --train_on SICK --exp_count 1 --layer 12 --plot_mds
+
+##Plotting distances:
+python main.py --dataset RNN-priming-short-1000 --load_reprs_path ../representations/ --task active-passive --focus object --debias Goldberg --lexical_split --test_on RNN-priming-short-1000 --train_on RNN-priming-short-1000 --exp_count 1 --vector_fun --plot_vectors --debug
+
+
+## Optional arguments:
     --cuda: 
     --lexical_split: 
     --cross_dataset_lexical_split:
     --clauses_only:
     --train_on:
     --test_on:
+
+
