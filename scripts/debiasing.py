@@ -17,6 +17,7 @@ from utils import plotting
 sys.path.append("../../src/nullspace_projection")
 from src import debias
 
+N_LAYERS = 12
 
 class Goldberg_Debiasing:
     def __init__(self, classifier='LinearSVC', n_iterations=10, reg_coeff=0.00001):
@@ -26,7 +27,7 @@ class Goldberg_Debiasing:
             self.params = {'fit_intercept': False, 'class_weight': None, "dual": False, 'random_state': 0}
         elif classifier == 'LogisticRegression':
             self.classifier = LogisticRegression
-            self.params = {'fit_intercept': True, 'penalty': 'l2', 'C': reg_coeff, "dual": False, 'random_state': 0, 'solver': 'lbfgs'}
+            self.params = {'fit_intercept': True, 'penalty': 'l2', 'C': reg_coeff, "dual": False, 'random_state': 0} #, 'solver': 'lbfgs'}
 
         self.P = np.zeros((12, 768, 768))
 
@@ -62,7 +63,7 @@ class Goldberg_Debiasing:
 
         X_cleaned = np.empty_like(X)
 
-        for layer in [5]:
+        for layer in range(N_LAYERS):
             if len(X.shape) == 3:
                 X_cleaned[:,layer,:] = (P[layer,:,:].dot(X[:,layer,:].T)).T
             else:
@@ -74,7 +75,7 @@ class Goldberg_Debiasing:
 
     def debias(self, X_train, Y_train, X_test, Y_test, train_dataset, test_dataset, is_transfer_projmatrix, is_transfer_classifier, is_plot, logfile_base):
         if not (is_transfer_projmatrix or is_transfer_classifier):
-            for layer in range(12):
+            for layer in range(N_LAYERS):
                 logfile = open(f'{logfile_base}_layer-{layer}.txt', 'a') 
                 P, iteration_accs = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[train_dataset], Y_test[train_dataset], layer, is_set_P=True)
                 for acc in iteration_accs:
@@ -84,13 +85,15 @@ class Goldberg_Debiasing:
 
         elif is_transfer_classifier:
             # if set, we try the test dataset on the same classifier that is trained on the train dataset
-            self.P, _ = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[test_dataset], Y_test[test_dataset])
+            for layer in range(N_LAYERS):
+                _, _ = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[test_dataset], Y_test[test_dataset], layer, is_set_P=True)
         
         elif is_transfer_projmatrix:
 
-            for layer in [5]:
+            for layer in range(N_LAYERS):
                 logfile = open(f'{logfile_base}_layer-{layer}_original.txt', 'w') 
             
+                print('Original Layer %d' % (layer+1))
                 P, iteration_accs_ds1 = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[train_dataset], Y_test[train_dataset], layer, is_set_P=True)
 
                 for acc in iteration_accs_ds1:
@@ -103,8 +106,9 @@ class Goldberg_Debiasing:
             X_train_cleaned = {test_dataset: self.clean_data(X_train[test_dataset])}
             X_test_cleaned = {test_dataset: self.clean_data(X_test[test_dataset])}
 
-            for layer in [5]:
+            for layer in range(N_LAYERS):
 
+                print('"Cleaned" Layer %d' % (layer+1))
                 logfile = open(f'{logfile_base}_layer-{layer}_cleaned.txt', 'w') 
 
                 # try to re-debias the "cleaned" dataset:
