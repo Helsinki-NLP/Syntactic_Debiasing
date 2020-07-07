@@ -41,7 +41,7 @@ def main(opt):
         logging.info('Separating training and test sets')
         #FIXME: This assumes single lexical item from each example sentence for now, eg. a verb.
 
-        for experiment_number in range(opt.different_split_exp_count):
+        for experiment_number in range(opt.exp_count):
             X_train, Y_train, X_test, Y_test, \
                 cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
                     = arrange_data.train_test_split(cls1_instances, cls2_instances,
@@ -50,7 +50,8 @@ def main(opt):
                                                  opt.lexical_split,
                                                  opt.random_labels,
                                                  opt.focus,
-                                                 experiment_number)
+                                                 experiment_number,
+                                                 do_save=True)
         sys.exit(0)
 
 
@@ -62,11 +63,23 @@ def main(opt):
             for f in glob.glob(logfile_base + '*'):
                 os.remove(f)
 
-            for experiment_number in range(opt.different_split_exp_count):
-                
-                X_train, Y_train, X_test, Y_test, \
-                    cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
-                        = arrange_data.load_splits(opt.dataset, opt.focus, experiment_number)
+            for experiment_number in range(opt.exp_count):
+                if opt.use_ready_splits:
+                    X_train, Y_train, X_test, Y_test, \
+                        cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
+                            = arrange_data.load_splits(opt.dataset, opt.focus, experiment_number)
+
+                else:
+                    X_train, Y_train, X_test, Y_test, \
+                        cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
+                            = arrange_data.train_test_split(cls1_instances, cls2_instances,
+                                                 cls1_words, cls2_words,
+                                                 opt.dataset, 
+                                                 opt.lexical_split,
+                                                 opt.random_labels,
+                                                 opt.focus,
+                                                 experiment_number,
+                                                 do_save=False)
 
                 #for dataset in opt.dataset:
                 #    X_train[dataset], Y_train[dataset], X_test[dataset], Y_test[dataset] = arrange_data.train_test_split(cls1_instances[dataset], cls2_instances[dataset],
@@ -80,9 +93,8 @@ def main(opt):
                     opt.test_on = opt.dataset[0]    
 
                 if opt.debias == 'Goldberg':
-                    for j in range(opt.same_split_exp_count):
-                        db = debiasing.Goldberg_Debiasing(classifier='LogisticRegression', n_iterations=N_ITERATIONS, reg_coeff=REG_COEFF)
-                        db.debias(X_train, Y_train, X_test, Y_test, opt.train_on, opt.test_on, opt.transfer_projmatrix, opt.transfer_classifier, opt.plot_mds, logfile_base)
+                    db = debiasing.Goldberg_Debiasing(classifier='LogisticRegression', n_iterations=N_ITERATIONS, reg_coeff=REG_COEFF)
+                    db.debias(X_train, Y_train, X_test, Y_test, opt.train_on, opt.test_on, opt.transfer_projmatrix, opt.transfer_classifier, opt.plot_mds, logfile_base)
 
                 # FIXME: correct for layer-wise cleaning.
                 #elif opt.debias == 'GBDD':
@@ -219,11 +231,11 @@ if __name__ == '__main__':
     parser.add_argument('--plot_vectors', action='store_true',
                         help='shall plot the vector distances before and after cleaning.')                                                  
 
-    parser.add_argument('--different_split_exp_count', type=int, default=1,
-                        help='how many times to calculate a different train-test split and repeat the experiments.') 
+    parser.add_argument('--exp_count', type=int, default=1,
+                        help='how many experiments to run.') 
 
-    parser.add_argument('--same_split_exp_count', type=int, default=1,
-                        help='how many times to repeat experiments with each train-test split.')   
+    parser.add_argument('--use_ready_splits', action='store_true',
+                        help='to use pre-prepared splits or not.')  
 
     parser.add_argument('--save_splits', action='store_true',
                         help='create and save the splits to load later.')                           

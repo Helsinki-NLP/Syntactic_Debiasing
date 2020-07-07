@@ -3,11 +3,12 @@ import os
 import numpy as np
 import random
 import logging
+import pickle
 
 TEST_RATIO = 0.3
 ENC_DIM = 768
 
-def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, datasets, is_lexical_split, is_random_labels, focus, experiment_number):
+def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, datasets, is_lexical_split, is_random_labels, focus, experiment_number, do_save=False):
     X_train = {}
     X_test = {}
     Y_train = {}
@@ -144,16 +145,16 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, dat
 
 
         # save the splits:
-        import pickle
-        with open(f'../splits/X_train_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(X_train[dataset], fout)
-        with open(f'../splits/Y_train_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(Y_train[dataset], fout)
-        with open(f'../splits/X_test_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(X_test[dataset], fout)
-        with open(f'../splits/Y_test_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(Y_test[dataset], fout)
+        if do_save:
+            with open(f'../splits/X_train_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(X_train[dataset], fout)
+            with open(f'../splits/Y_train_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(Y_train[dataset], fout)
+            with open(f'../splits/X_test_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(X_test[dataset], fout)
+            with open(f'../splits/Y_test_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(Y_test[dataset], fout)
 
-        with open(f'../splits/cls1_train_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls1_train_instances[dataset], fout)
-        with open(f'../splits/cls2_train_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls2_train_instances[dataset], fout)
-        with open(f'../splits/cls1_test_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls1_test_instances[dataset], fout)
-        with open(f'../splits/cls2_test_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls2_test_instances[dataset], fout)
+            with open(f'../splits/cls1_train_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls1_train_instances[dataset], fout)
+            with open(f'../splits/cls2_train_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls2_train_instances[dataset], fout)
+            with open(f'../splits/cls1_test_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls1_test_instances[dataset], fout)
+            with open(f'../splits/cls2_test_instances_{dataset}_exp_{experiment_number}_{focus}.pkl', 'wb') as fout: pickle.dump(cls2_test_instances[dataset], fout)
 
     return X_train, Y_train, X_test, Y_test, cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances
 
