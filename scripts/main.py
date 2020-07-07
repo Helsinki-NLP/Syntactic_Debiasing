@@ -60,6 +60,8 @@ def main(opt):
     for N_ITERATIONS in [3]:
         for REG_COEFF in [0.00001]:  #0.00000001
             logfile_base = '../results/transfer_learning/' + opt.train_on + '-2-' + opt.test_on + f'/{opt.test_on}_reg_coeff_{REG_COEFF}_it_{N_ITERATIONS}_{opt.focus}'
+            logfile_dir = '../results/transfer_learning/' + opt.train_on + '-2-' + opt.test_on
+            os.system(f'mkdir -p {logfile_dir}')
             for f in glob.glob(logfile_base + '*'):
                 os.remove(f)
 
