@@ -75,6 +75,7 @@ class Goldberg_Debiasing:
 
     def debias(self, X_train, Y_train, X_test, Y_test, train_dataset, test_dataset, is_transfer_projmatrix, is_transfer_classifier, is_plot, logfile_base):
         if not (is_transfer_projmatrix or is_transfer_classifier):
+            
             for layer in range(N_LAYERS):
                 logfile = open(f'{logfile_base}_layer-{layer}.txt', 'a') 
                 P, iteration_accs = self.train(X_train[train_dataset], Y_train[train_dataset], X_test[train_dataset], Y_test[train_dataset], layer, is_set_P=True)
