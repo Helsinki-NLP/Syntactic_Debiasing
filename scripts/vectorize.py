@@ -38,28 +38,26 @@ class Vectorize():
 
 
 
-    def set_data(self, cls1_instances, cls2_instances, cls1_words, cls2_words, cls1_ids, cls2_ids, datasets):
+    def set_data(self, cls1_instances, cls2_instances, cls1_words, cls2_words, datasets, foci):
         self.cls1_instances = {}
         self.cls2_instances = {}
 
-        for dataset in datasets:
-            self.cls1_instances[dataset] = [cls1_instance[:,:,:].detach().numpy() \
-                                                for cls1_instance in cls1_instances[dataset]]
-            self.cls2_instances[dataset] = [cls2_instance[:,:,:].detach().numpy() \
-                                                for cls2_instance in cls2_instances[dataset]]
+        for focus in foci:
+            for dataset in datasets:
+                self.cls1_instances[dataset] = {focus: [] for focus in foci}
+                for cls1_instance in cls1_instances[dataset][focus]:
+                    self.cls1_instances[dataset][focus].append(cls1_instance[:,:,:].detach().numpy())
+
+                self.cls2_instances[dataset] = {focus: [] for focus in foci}
+                for cls2_instance in cls2_instances[dataset][focus]:
+                    self.cls2_instances[dataset][focus].append(cls2_instance[:,:,:].detach().numpy())
+
         
         self.cls1_words = cls1_words
         self.cls2_words = cls2_words
 
-        self.cls1_ids = cls1_ids
-        self.cls2_ids = cls2_ids
-
         self.datasets = datasets
-        self.vocabulary = set([item[0] for dataset in datasets for item in cls1_words[dataset]] \
-                            + [item[0] for dataset in datasets for item in cls2_words[dataset]])
-
-        self.diffvectors = {dataset: np.array([]) for dataset in datasets}
-        self.diffclasses = {dataset: {word: np.array([]) for word in self.vocabulary} for dataset in datasets}
+        self.foci = foci
 
     def extract_diffvectors(self, datasets, layer, plotting_on='True'):
         print('extracting')
@@ -135,7 +133,7 @@ class Vectorize():
 
 
 
-    def calc_word_senses(self, word, dataset, distance_fnc, with_debiasing=None, logfile=None):
+    def calc_word_senses(self, dataset, focus, distance_fnc, with_debiasing=None, logfile=None):
 
             # RED LINE
             acc_sim_corr1_corr2 = np.zeros((N_LAYERS,1))
@@ -161,17 +159,19 @@ class Vectorize():
             # should go smaller
 
             word_count = 0
-            for sentence in self.cls1_words[dataset]:
+            for sentence in self.cls1_words[dataset][focus]:
                 for word in sentence: 
                     word_count += 1    
 
+                    print('word is ', word)
+
                     # find sentence_idx, word_idx pairs for various cases:
-                    all_occurrences = [(i, self.cls1_words[dataset][i].index(word)) for i in range(len(self.cls1_words[dataset])) if word in self.cls1_words[dataset][i]]
+                    all_occurrences = [(i, self.cls1_words[dataset][focus][i].index(word)) for i in range(len(self.cls1_words[dataset][focus])) if word in self.cls1_words[dataset][focus][i]]
 
                     corresponding_occurrence = random.choice(all_occurrences)
                     sidx, widx = corresponding_occurrence
-                    vec_corr_1 = self.cls1_instances[dataset][sidx][widx,:,:]
-                    vec_corr_2 = self.cls2_instances[dataset][sidx][widx,:,:]  
+                    vec_corr_1 = self.cls1_instances[dataset][focus][sidx][widx,:,:]
+                    vec_corr_2 = self.cls2_instances[dataset][focus][sidx][widx,:,:]  
 
                     acc_sim_corr1_corr2 += distance_fnc(vec_corr_1, vec_corr_2)
 
@@ -197,11 +197,11 @@ class Vectorize():
             word_count = 0
             for class_id in [1, 2]:
                 if class_id == 1:
-                    cls_words = self.cls1_words[dataset]
-                    cls_instances = self.cls1_instances[dataset]
+                    cls_words = self.cls1_words[dataset][focus]
+                    cls_instances = self.cls1_instances[dataset][focus]
                 elif class_id == 2:
-                    cls_words = self.cls2_words[dataset]
-                    cls_instances = self.cls2_instances[dataset]
+                    cls_words = self.cls2_words[dataset][focus]
+                    cls_instances = self.cls2_instances[dataset][focus]
 
                 for sentence in cls_words:
                     for word in sentence:  
@@ -244,11 +244,11 @@ class Vectorize():
             word_count = 0
             for class_id in [1, 2]:
                 if class_id == 1:
-                    cls_words = self.cls1_words[dataset]
-                    cls_instances = self.cls1_instances[dataset]
+                    cls_words = self.cls1_words[dataset][focus]
+                    cls_instances = self.cls1_instances[dataset][focus]
                 elif class_id == 2:
-                    cls_words = self.cls2_words[dataset]
-                    cls_instances = self.cls2_instances[dataset]
+                    cls_words = self.cls2_words[dataset][focus]
+                    cls_instances = self.cls2_instances[dataset][focus]
 
                 for sentence in cls_words:
                     for word in sentence:  
@@ -294,15 +294,15 @@ class Vectorize():
             word_count = 0
             for class_id in [1, 2]:
                 if class_id == 1:
-                    cls_words = self.cls1_words[dataset]
-                    cls_instances = self.cls1_instances[dataset]
-                    not_cls_words = self.cls2_words[dataset]
-                    not_cls_instances = self.cls2_instances[dataset]
+                    cls_words = self.cls1_words[dataset][focus]
+                    cls_instances = self.cls1_instances[dataset][focus]
+                    not_cls_words = self.cls2_words[dataset][focus]
+                    not_cls_instances = self.cls2_instances[dataset][focus]
                 elif class_id == 2:
-                    cls_words = self.cls2_words[dataset]
-                    cls_instances = self.cls2_instances[dataset]
-                    not_cls_words = self.cls1_words[dataset]
-                    not_cls_instances = self.cls1_instances[dataset]                    
+                    cls_words = self.cls2_words[dataset][focus]
+                    cls_instances = self.cls2_instances[dataset][focus]
+                    not_cls_words = self.cls1_words[dataset][focus]
+                    not_cls_instances = self.cls1_instances[dataset][focus]                  
 
                 for sentence in cls_words:
                     for word in sentence:  
@@ -358,141 +358,6 @@ class Vectorize():
                 os.system(f'mkdir -p {os.path.dirname(logfile)}')
                 with open(logfile, 'wb') as fout:
                     pickle.dump(distances, fout)
-
-
-
-
-
-
-    def calc_word_senses_v1(self, word, dataset, distance_fnc, with_debiasing=None):
-
-            acc_sim_corr1_corr2 = np.zeros((N_LAYERS,1))
-            acc_sim_corr1_random_occ = np.zeros((N_LAYERS,1))
-            acc_sim_corr1_random_not_occ = np.zeros((N_LAYERS,1))
-            acc_sim_corr1_active = np.zeros((N_LAYERS,1))
-            acc_sim_corr1_any = np.zeros((N_LAYERS,1))
-
-            acc_sim_cleancorr1_cleancorr2 = np.zeros((N_LAYERS,1))
-            acc_sim_cleancorr1_clean_random_occ = np.zeros((N_LAYERS,1))
-            acc_sim_cleancorr1_clean_random_not_occ = np.zeros((N_LAYERS,1))
-            acc_sim_cleancorr1_clean_active = np.zeros((N_LAYERS,1))
-            acc_sim_cleancorr1_clean_any = np.zeros((N_LAYERS,1))
-
-            word_count = 0
-            for sentence in self.cls1_words[dataset]:
-                for word in sentence:
-
-                        print('word is ', word)
-                        word_count += 1
-
-                        # take corresponding occurrences of word
-                        logging.debug([i for i in range(len(self.cls1_words[dataset])) if word in self.cls1_words[dataset][i]])
-
-                        # find sentence_idx, word_idx pairs for various cases:
-                        all_occurrences = [(i, self.cls1_words[dataset][i].index(word)) for i in range(len(self.cls1_words[dataset])) if word in self.cls1_words[dataset][i]]
-                        print(all_occurrences)
-                        if len(all_occurrences) == 1:
-                            continue
-
-                        corresponding_occurrence = random.choice(all_occurrences)
-                        
-                        random_class = random.choice([1, 2])
-                        random_occurrence = random.choice(list(set(all_occurrences).difference(set([corresponding_occurrence]))))
-
-                        not_occurrences = [(i, j) for i in range(len(self.cls1_words[dataset])) for j in range(len(self.cls1_words[dataset][i])) if word not in self.cls1_words[dataset][i]]
-                        random_not_occurrence = random.choice(not_occurrences)
-
-                        random_active_sidx = random.choice(range(len(self.cls1_words[dataset])))
-                        random_active_widx = random.choice(range(len(self.cls1_words[dataset][random_active_sidx])))
-
-                        random_any_class = random.choice([1, 2])
-                        if random_any_class == 1:
-                            random_any_sidx = random.choice(range(len(self.cls1_words[dataset])))
-                            random_any_widx = random.choice(range(len(self.cls1_words[dataset][random_active_sidx])))
-                        else:
-                            random_any_sidx = random.choice(range(len(self.cls2_words[dataset])))
-                            random_any_widx = random.choice(range(len(self.cls2_words[dataset][random_active_sidx])))
-
-                        # Before-Cleaning Vectors
-                        sidx, widx = corresponding_occurrence
-                        vec_corr_1 = self.cls1_instances[dataset][sidx][widx,:,:]
-                        vec_corr_2 = self.cls2_instances[dataset][sidx][widx,:,:]
-                        
-                        sidx, widx = random_occurrence
-                        vec_random_occ = self.cls1_instances[dataset][sidx][widx,:,:]
-
-                        sidx, widx = random_not_occurrence
-                        vec_random_not_occ = self.cls1_instances[dataset][sidx][widx,:,:]
-
-
-                        #vec_mean = np.zeros((1,N_LAYERS,ENC_DIM))
-                        #for sidx in range(len(self.cls1_instances[dataset])):
-                        #        vec_mean += np.mean(self.cls1_instances[dataset][sidx], axis=0) / len(self.cls1_instances[dataset])
-                        #vec_mean = vec_mean.reshape(N_LAYERS,ENC_DIM)
-                        sidx, widx = random_active_sidx, random_active_widx
-                        vec_random_active = self.cls1_instances[dataset][random_active_sidx][random_active_widx,:,:]
-
-                        sidx, widx = random_any_sidx, random_any_widx
-                        if random_any_class == 1:
-                            vec_random_any = self.cls1_instances[dataset][random_active_sidx][random_active_widx,:,:]                        
-                        else:
-                            vec_random_any = self.cls2_instances[dataset][random_active_sidx][random_active_widx,:,:]                        
-
-                        acc_sim_corr1_corr2          += distance_fnc(vec_corr_1, vec_corr_2)
-                        acc_sim_corr1_random_occ     += distance_fnc(vec_corr_1, vec_random_occ)
-                        acc_sim_corr1_random_not_occ += distance_fnc(vec_corr_1, vec_random_not_occ)
-                        acc_sim_corr1_active         += distance_fnc(vec_corr_1, vec_random_active)
-                        acc_sim_corr1_any            += distance_fnc(vec_corr_1, vec_random_any)
-
-
-                        if with_debiasing:
-                            # After-Cleaning Vectos:
-                            print(vec_corr_1.shape)
-                            clean_corr_1          = with_debiasing.clean_data(vec_corr_1)
-                            print('clean_corr_1', clean_corr_1)
-                            clean_corr_2          = with_debiasing.clean_data(vec_corr_2)
-                            print('clean_corr_2', clean_corr_2)
-                            clean_random_occ      = with_debiasing.clean_data(vec_random_occ)
-                            clean_random_not_occ  = with_debiasing.clean_data(vec_random_not_occ)
-                            clean_active             = with_debiasing.clean_data(vec_random_active)
-                            clean_any             = with_debiasing.clean_data(vec_random_any)
-
-
-                            acc_sim_cleancorr1_cleancorr2           += distance_fnc(clean_corr_1, clean_corr_2)
-                            acc_sim_cleancorr1_clean_random_occ     += distance_fnc(clean_corr_1, clean_random_occ)
-                            acc_sim_cleancorr1_clean_random_not_occ += distance_fnc(clean_corr_1, clean_random_not_occ)
-                            acc_sim_cleancorr1_clean_active         += distance_fnc(clean_corr_1, clean_active)
-                            acc_sim_cleancorr1_clean_any            += distance_fnc(clean_corr_1, clean_any)
-
-
-            
-            if self.avg_sim_corr1_corr2.size == 0:
-                self.avg_sim_corr1_corr2                     = acc_sim_corr1_corr2 / word_count
-                self.avg_sim_corr1_random_occ                = acc_sim_corr1_random_occ / word_count
-                self.avg_sim_corr1_random_not_occ            = acc_sim_corr1_random_not_occ / word_count
-                self.avg_sim_corr1_active                    = acc_sim_corr1_active / word_count
-                self.avg_sim_corr1_any                       = acc_sim_corr1_any / word_count
-
-                self.avg_sim_cleancorr1_cleancorr2           = acc_sim_cleancorr1_cleancorr2 / word_count
-                self.avg_sim_cleancorr1_clean_random_occ     = acc_sim_cleancorr1_clean_random_occ / word_count
-                self.avg_sim_cleancorr1_clean_random_not_occ = acc_sim_cleancorr1_clean_random_not_occ / word_count
-                self.avg_sim_cleancorr1_clean_active         = acc_sim_cleancorr1_clean_active / word_count
-                self.avg_sim_cleancorr1_clean_any            = acc_sim_cleancorr1_clean_any / word_count
-
-            else:
-
-                self.avg_sim_corr1_corr2          = np.concatenate((self.avg_sim_corr1_corr2, (acc_sim_corr1_corr2 / word_count)), axis=1) 
-                self.avg_sim_corr1_random_occ     = np.concatenate((self.avg_sim_corr1_random_occ, (acc_sim_corr1_random_occ / word_count)), axis=1)
-                self.avg_sim_corr1_random_not_occ = np.concatenate((self.avg_sim_corr1_random_not_occ, (acc_sim_corr1_random_not_occ / word_count)), axis=1)
-                self.avg_sim_corr1_active         = np.concatenate((self.avg_sim_corr1_active, (acc_sim_corr1_active / word_count)), axis=1)
-                self.avg_sim_corr1_any            = np.concatenate((self.avg_sim_corr1_any, (acc_sim_corr1_any / word_count)), axis=1)
-
-                self.avg_sim_cleancorr1_cleancorr2           = np.concatenate((self.avg_sim_cleancorr1_cleancorr2, (acc_sim_cleancorr1_cleancorr2 / word_count)), axis=1)
-                self.avg_sim_cleancorr1_clean_random_occ     = np.concatenate((self.avg_sim_cleancorr1_clean_random_occ, (acc_sim_cleancorr1_clean_random_occ / word_count)), axis=1)
-                self.avg_sim_cleancorr1_clean_random_not_occ = np.concatenate((self.avg_sim_cleancorr1_clean_random_not_occ, (acc_sim_cleancorr1_clean_random_not_occ / word_count)), axis=1)
-                self.avg_sim_cleancorr1_clean_active         = np.concatenate((self.avg_sim_cleancorr1_clean_active, (acc_sim_cleancorr1_clean_active / word_count)), axis=1)
-                self.avg_sim_cleancorr1_clean_any            = np.concatenate((self.avg_sim_cleancorr1_clean_any, (acc_sim_cleancorr1_clean_any / word_count)), axis=1)
-
 
 
 

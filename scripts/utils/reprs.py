@@ -60,7 +60,7 @@ def connluify(lines):
 
 # ----- auxilaries -----
 
-def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_device='cpu'):
+def extract(dataset, focus, data_path, cls1_name, cls2_name, clauses_only, to_device='cpu'):
     device = torch.device(to_device) 
 
     # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), since every sentence can be of arbitrary length now
@@ -69,9 +69,7 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
 
     # These will be list of lists of tokens, one list of tokens per sentence.
     cls1_words = []
-    cls2_words = []
-    cls1_ids = []
-    cls2_ids = []    
+    cls2_words = []   
 
     bert = bertify(device)
 
@@ -182,9 +180,6 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
                                                                                 for layer in range(bert.N_LAYERS)], \
                                                                                 axis=1)
 
-                ids_1 = [WOI_active_id]
-                ids_2 = [WOI_passive_id]
-
                 words_1 = [WOI_active_form]
                 words_2 = [WOI_passive_form]
 
@@ -214,14 +209,11 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
             cls1_words.append(words_1)
             cls2_words.append(words_2)
 
-            cls1_ids.append(ids_1)
-            cls2_ids.append(ids_2)
-
 
     if dataset == 'RNN' and clauses_only:
         pass
 
-    return cls1_instances, cls2_instances, cls1_words, cls2_words, cls1_ids, cls2_ids
+    return cls1_instances, cls2_instances, cls1_words, cls2_words
 
 
 # ----- API for this module -----
@@ -229,63 +221,52 @@ def extract(dataset, data_path, cls1_name, cls2_name, focus, clauses_only, to_de
 def load_representations(opt):
     cls1_name, cls2_name = opt.task.split('-')
 
-    cls1_instances = {}
-    cls2_instances = {}
+    cls1_instances = {dataset: {} for dataset in opt.dataset}
+    cls2_instances = {dataset: {} for dataset in opt.dataset}
 
-    cls1_words = {}
-    cls2_words = {}
-
-    cls1_ids = {}
-    cls2_ids = {}
-
+    cls1_words = {dataset: {} for dataset in opt.dataset}
+    cls2_words = {dataset: {} for dataset in opt.dataset}
 
     for dataset in opt.dataset:
-        logging.info('Loading representations from ' + dataset + ' at ' + opt.load_reprs_path)
+        for focus in opt.focus:
+            logging.info('Loading representations from dataset: ' + dataset + ', focus: ' + focus + ' at ' + opt.load_reprs_path)
 
-        # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), 
-        # since every sentence can be of arbitrary length now
-        cls1_instances[dataset] = loadh5file(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
-        cls2_instances[dataset] = loadh5file(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
+            # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), 
+            # since every sentence can be of arbitrary length now
+            cls1_instances[dataset][focus] = loadh5file(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{focus}.h5')
+            cls2_instances[dataset][focus] = loadh5file(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{focus}.h5')
 
-        cls1_words[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.words.pkl')
-        cls2_words[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
+            cls1_words[dataset][focus] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{focus}.words.pkl')
+            cls2_words[dataset][focus] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{focus}.words.pkl')
 
-        cls1_ids[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.ids.pkl')
-        cls2_ids[dataset] = loadpickle(opt.load_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.ids.pkl')
-
-    return cls1_instances, cls2_instances, cls1_words, cls2_words, cls1_ids, cls2_ids
+    return cls1_instances, cls2_instances, cls1_words, cls2_words
 
 
 def extract_representations(opt):
     cls1_name, cls2_name = opt.task.split('-')
 
-    cls1_instances = {}
-    cls2_instances = {}
+    cls1_instances = {dataset: {} for dataset in opt.dataset}
+    cls2_instances = {dataset: {} for dataset in opt.dataset}
 
-    cls1_words = {}
-    cls2_words = {}
-
-    cls1_ids = {}
-    cls2_ids = {}   
+    cls1_words = {dataset: {} for dataset in opt.dataset}
+    cls2_words = {dataset: {} for dataset in opt.dataset} 
 
     for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
-        logging.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
-        cls1_instances[dataset], cls2_instances[dataset], cls1_words[dataset], cls2_words[dataset], cls1_ids[dataset], cls2_ids[dataset] \
-                            = extract(dataset, dataset_path, cls1_name, cls2_name,
-                                      opt.focus, opt.clauses_only, to_device=('cuda' if opt.cuda else 'cpu'))
+        for focus in opt.focus:
+            logging.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
+            cls1_instances[dataset][focus], cls2_instances[dataset][focus], cls1_words[dataset][focus], cls2_words[dataset][focus] \
+                                = extract(dataset, focus, dataset_path, cls1_name, cls2_name,
+                                          opt.clauses_only, to_device=('cuda' if opt.cuda else 'cpu'))
 
-        logging.info('Saving representations to ' + dataset + ' at ' + opt.save_reprs_path)            
-        saveh5file(cls1_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.h5')
-        saveh5file(cls2_instances[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.h5')
+            logging.info('Saving representations to dataset: ' + dataset + ', focus: ' + focus + ' at ' + opt.save_reprs_path)            
+            saveh5file(cls1_instances[dataset][focus], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{focus}.h5')
+            saveh5file(cls2_instances[dataset][focus], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{focus}.h5')
 
-        savepickle(cls1_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.words.pkl')
-        savepickle(cls2_words[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.words.pkl')
-
-        savepickle(cls1_ids[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{opt.focus}.ids.pkl')
-        savepickle(cls2_ids[dataset], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{opt.focus}.ids.pkl')
+            savepickle(cls1_words[dataset][focus], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{focus}.words.pkl')
+            savepickle(cls2_words[dataset][focus], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls2_name}.{focus}.words.pkl')
 
 
-    return cls1_instances, cls2_instances, cls1_words, cls2_words, cls1_ids, cls2_ids
+    return cls1_instances, cls2_instances, cls1_words, cls2_words
 
 
     
