@@ -9,6 +9,10 @@ import logging
 from utils.bertify import bertify
 
 
+MT_ENC_DIM = 512
+MT_LAYERS = 6
+
+
 # ----- h5 file functions -----
 def loadh5file(load_path):
     '''load embeddings and convert to list of tensors'''
@@ -60,7 +64,7 @@ def connluify(lines):
 
 # ----- auxilaries -----
 
-def extract(dataset, focus, data_path, cls1_name, cls2_name, clauses_only, to_device='cpu'):
+def bert_extract(dataset, focus, data_path, cls1_name, cls2_name, to_device='cpu'):
     device = torch.device(to_device) 
 
     # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), since every sentence can be of arbitrary length now
@@ -216,6 +220,162 @@ def extract(dataset, focus, data_path, cls1_name, cls2_name, clauses_only, to_de
     return cls1_instances, cls2_instances, cls1_words, cls2_words
 
 
+
+
+
+
+def mt_extract(dataset, focus, mt_reprs_path, data_path, cls1_name, cls2_name, to_device='cpu'):
+    device = torch.device(to_device) 
+
+    # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), since every sentence can be of arbitrary length now
+    cls1_instances = []
+    cls2_instances = []
+
+    # These will be list of lists of tokens, one list of tokens per sentence.
+    cls1_words = []
+    cls2_words = []   
+
+    cls1_file = open(data_path + '/' + f'{dataset}.{cls1_name}.pos.parse.conll', 'r', encoding="utf-8")
+    firstline = cls1_file.readline()
+    cls1_lines = connluify(cls1_file.readlines())
+    cls1_items = conllu.parse(''.join(cls1_lines))
+
+    cls2_file = open(data_path + '/' + f'{dataset}.{cls2_name}.pos.parse.conll', 'r', encoding="utf-8")
+    firstline = cls2_file.readline()
+    cls2_lines = connluify(cls2_file.readlines())
+    cls2_items = conllu.parse(''.join(cls2_lines))
+
+    mt_reprs_cls1 = h5py.File(f'{mt_reprs_path}/{dataset}/{dataset}_{cls1_name}.repr.layer_word.hdf5', 'r')
+    mt_reprs_cls2 = h5py.File(f'{mt_reprs_path}/{dataset}/{dataset}_{cls2_name}.repr.layer_word.hdf5', 'r')
+
+
+    for sidx, (cls1_tokens, cls2_tokens) in enumerate(zip(cls1_items, cls2_items)):
+        cls1_sentence = ' '.join([token['form'] for token in cls1_tokens])
+        cls2_sentence = ' '.join([token['form'] for token in cls2_tokens])
+
+        cls1_representation = mt_reprs_cls1[str(sidx)]
+        cls2_representation = mt_reprs_cls2[str(sidx)]
+
+        #roles:
+        #odict_keys(['id', 'form', 'lemma', 'upostag', 'xpostag', 'feats', 'head', 'deprel'])
+        #print(cls1_tokens[0]['id'])       1
+        #print(cls1_tokens[0]['form'])     the
+        #print(cls1_tokens[0]['lemma'])    the
+        #print(cls1_tokens[0]['upostag'])  _
+        #print(cls1_tokens[0]['xpostag'])  DT
+        #print(cls1_tokens[0]['feats'])    None
+        #print(cls1_tokens[0]['head'])     3
+        #print(cls1_tokens[0]['deprel'])   det
+
+        logging.debug(cls1_sentence)
+        logging.debug(cls2_sentence)
+        #logging.debug(cls2_bert_tokenization)
+
+
+        # ----- Active-Passive Task -----
+        if cls1_name == 'active' and cls2_name == 'passive':
+            active_tokens = cls1_tokens
+            passive_tokens = cls2_tokens
+
+            active_mt_enc = cls1_representation
+            passive_mt_enc = cls2_representation
+
+            if focus != 'all':
+                if focus == 'verb':
+                    for passive_token in passive_tokens:
+                        if passive_token['deprel'].upper() == 'ROOT':
+                            WOI_passive_id = passive_token['id']
+                            WOI_passive_form = passive_token['form']
+                            break
+                    for active_token in active_tokens:
+                        if active_token['deprel'].upper() == 'ROOT':
+                            WOI_active_id = active_token['id']
+                            WOI_active_form = active_token['form']
+                            break
+
+                if focus == 'subject':
+                    WOI_passive_id = -1
+                    for passive_token in passive_tokens:
+                        if passive_token['form'] == 'by':
+                            WOI_passive_id = passive_token['head']
+                            WOI_passive_form = passive_token['form']
+                            break
+                    for passive_token in passive_tokens:
+                        if passive_token['id'] == WOI_passive_id:
+                            WOI_form = passive_token['form'].lower()
+                            WOI_passive_form = passive_token['form'].lower()
+                            break
+                    if WOI_passive_id == -1:
+                        continue
+                    for active_token in active_tokens:
+                        if active_token['form'].lower() == WOI_form:
+                            WOI_active_id = active_token['id']
+                            WOI_active_form = active_token['form'].lower()
+                            break
+
+                if focus == 'object':
+                    WOI_passive_id = -1
+                    for passive_token in passive_tokens:
+                        if passive_token['deprel'] == 'nsubj:pass' or passive_token['deprel'] == 'nsubjpass':
+                            WOI_passive_id = passive_token['id']
+                            WOI_passive_form = passive_token['form'].lower()
+                            break
+                    if WOI_passive_id == -1:
+                        continue
+                    WOI_active_id = -1
+                    for active_token in active_tokens:
+                        if active_token['form'].lower() == WOI_passive_form and (active_token['deprel'] == 'dobj' or active_token['deprel'] == 'obj'):
+                            WOI_active_id = active_token['id']
+                            WOI_active_form = active_token['form'].lower()
+                            break
+                    if WOI_active_id == -1:
+                        continue
+                
+
+                instance_1 = np.stack([np.reshape(active_mt_enc[layer,WOI_active_id-1,:],(1,MT_ENC_DIM)) \
+                                                                                for layer in range(MT_LAYERS)], \
+                                                                                axis=1)
+                instance_2 = np.stack([np.reshape(passive_mt_enc[layer,WOI_passive_id-1,:],(1,MT_ENC_DIM)) \
+                                                                                for layer in range(MT_LAYERS)], \
+                                                                                axis=1)
+
+                words_1 = [WOI_active_form]
+                words_2 = [WOI_passive_form]
+
+                logging.debug('Active: ' + WOI_active_form)
+                logging.debug('Passive: ' + WOI_passive_form)
+
+
+            if focus == 'all':
+                cls1_wc = active_mt_enc.shape[1]
+                instance_1 = np.stack([np.reshape(active_mt_enc[layer,:,:],(cls1_wc,MT_ENC_DIM)) \
+                                                                                for layer in range(MT_LAYERS)], \
+                                                                                axis=1)
+
+                cls2_wc = passive_mt_enc.shape[1]
+                instance_2 = np.stack([np.reshape(passive_mt_enc[layer,:,:],(cls2_wc,MT_ENC_DIM)) \
+                                                                                for layer in range(MT_LAYERS)], \
+                                                                                axis=1)
+                
+                words_1 = [cls1_token['form'] for cls1_token in cls1_tokens]
+                words_2 = [cls2_token['form'] for cls2_token in cls2_tokens]
+
+
+
+            cls1_instances.append(instance_1)
+            cls2_instances.append(instance_2)
+            
+            cls1_words.append(words_1)
+            cls2_words.append(words_2)
+
+
+    if dataset == 'RNN' and clauses_only:
+        pass
+
+    return cls1_instances, cls2_instances, cls1_words, cls2_words
+
+
+
 # ----- API for this module -----
 
 def load_representations(opt):
@@ -254,9 +414,15 @@ def extract_representations(opt):
     for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
         for focus in opt.focus:
             logging.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
-            cls1_instances[dataset][focus], cls2_instances[dataset][focus], cls1_words[dataset][focus], cls2_words[dataset][focus] \
-                                = extract(dataset, focus, dataset_path, cls1_name, cls2_name,
-                                          opt.clauses_only, to_device=('cuda' if opt.cuda else 'cpu'))
+            
+            if opt.model == 'bert':
+                cls1_instances[dataset][focus], cls2_instances[dataset][focus], cls1_words[dataset][focus], cls2_words[dataset][focus] \
+                                = bert_extract(dataset, focus, dataset_path, cls1_name, cls2_name,
+                                          to_device=('cuda' if opt.cuda else 'cpu'))
+            elif opt.model == 'MT':
+                cls1_instances[dataset][focus], cls2_instances[dataset][focus], cls1_words[dataset][focus], cls2_words[dataset][focus] \
+                                = mt_extract(dataset, focus, opt.mt_reprs_path, dataset_path, cls1_name, cls2_name,
+                                          to_device=('cuda' if opt.cuda else 'cpu'))                             
 
             logging.info('Saving representations to dataset: ' + dataset + ', focus: ' + focus + ' at ' + opt.save_reprs_path)            
             saveh5file(cls1_instances[dataset][focus], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{focus}.h5')

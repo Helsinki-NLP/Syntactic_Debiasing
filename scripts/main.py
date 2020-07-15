@@ -15,6 +15,7 @@ from utils import arrange_data
 import debiasing
 import vectorize
 from plotting import visualize
+from cca import CCA
 
 def main(opt):
     
@@ -80,7 +81,7 @@ def main(opt):
 
         #----- Debiasing -----
         if opt.debias == 'iNLP':
-            db = debiasing.iNLP_Debiasing(classifier='LogisticRegression', n_iterations=opt.n_iterations+1, reg_coeff=opt.reg_coeff)
+            db = debiasing.iNLP_Debiasing(classifier='LogisticRegression', n_iterations=opt.n_iterations+1, reg_coeff=opt.reg_coeff, model=opt.model)
             db.debias(X_train, Y_train, X_test, Y_test, 
                       opt.train_on_dataset, 
                       opt.test_on_dataset,
@@ -147,6 +148,20 @@ def main(opt):
                 vc.plot_word_senses(opt.test_on_dataset, opt.test_on_focus, is_with_debiasing=True)
                     
 
+        #------ SVCCA / PWCCA -------
+
+        if opt.cca:
+            cca = CCA(cls1_instances[opt.train_on_dataset][opt.train_on_focus], 
+                      cls2_instances[opt.train_on_dataset][opt.train_on_focus],
+                      opt.train_on_layer-1,
+                      cls1_instances[opt.test_on_dataset][opt.test_on_focus], 
+                      cls2_instances[opt.test_on_dataset][opt.test_on_focus],
+                      opt.test_on_layer-1)
+
+            cca.apply_pwcca()
+            cca.apply_svcca()
+
+
 
 
 
@@ -161,11 +176,18 @@ if __name__ == '__main__':
                         default=['/scratch/project_2002233/debiasing/data/SICK/Filtered'],
                         help='path to the raw dataset location. Defaults to puhti:SICK location')  
 
+    parser.add_argument('--model', required=False, type=str,
+                        default='BERT',
+                        help='encoder model to use [BERT (default) | MT]')  
+
     parser.add_argument('--load_reprs_path', required=False, type=str,
                         help='previously extracted representations\' path')
 
     parser.add_argument('--save_reprs_path', required=False, type=str,
                         help='save the extracted representations to')
+
+    parser.add_argument('--mt_reprs_path', required=False, type=str,
+                        help='if MT encoder is being used, path to the previously extracted representations from the MT model')    
 
     parser.add_argument('--outdir', type=str, required=False, default='../outputs/',
                         help='path to dir where output logs will be saved')     
@@ -179,20 +201,17 @@ if __name__ == '__main__':
     parser.add_argument('--extract_only', action='store_true',
                         help='run only until the extraction and saving of representations')
 
-    parser.add_argument('--debias', required=False, type=str, default='iNLP',
-                        help='debiasing method if it is to be performed [iNLP (default) | GBDD | BAM]')
+    parser.add_argument('--debias', required=False, type=str,
+                        help='debiasing method if it is to be performed [iNLP | GBDD | BAM]')
 
     parser.add_argument('--vector_fun', action='store_true',
                         help='whether to have fun with vectors')
 
+    parser.add_argument('--cca', action='store_true',
+                        help='do SVCCA/PWCCA analysis')                         
+
     parser.add_argument('--plot_results', action='store_true',
                         help='if active, will plot visualizations of the data')
-
-    #parser.add_argument('--layer', required=False, type=int, default=6,
-    #                    help='which layer of representations to debias on\' path')   
-
-    parser.add_argument('--clauses_only', action='store_true',
-                        help='use only the subject clause from the RNN dataset')
 
     parser.add_argument('--lexical_split', action='store_true',
                         help='enforces that same lexical entities go to the same train/test set split')
@@ -213,7 +232,13 @@ if __name__ == '__main__':
                         help='which part of sentence to train on (defaults to focus) [verb | subject | object | all]')
 
     parser.add_argument('--test_on_focus', required=False, type=str,
-                        help='which part of sentence to test on (defaults to focus) [verb | subject | object | all]')                           
+                        help='which part of sentence to test on (defaults to focus) [verb | subject | object | all]') 
+
+    parser.add_argument('--train_on_layer', required=False, type=int,
+                        help='(optional) which layer to train on')
+
+    parser.add_argument('--test_on_layer', required=False, type=int,
+                        help='(optional) which layer to test on')                                                   
 
     parser.add_argument('--transfer_projmatrix', action='store_true',
                         help='if set, we learn the projection matrix on the train dataset, then use it to clean the test dataset')   

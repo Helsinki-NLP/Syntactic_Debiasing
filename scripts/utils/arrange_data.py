@@ -6,7 +6,6 @@ import logging
 import pickle
 
 TEST_RATIO = 0.3
-ENC_DIM = 768
 
 def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, datasets, foci, is_lexical_split, is_random_labels, experiment_number, do_save=False):
     X_train = {dataset: {} for dataset in datasets}
@@ -18,6 +17,8 @@ def train_test_split(cls1_instances, cls2_instances, cls1_words, cls2_words, dat
     cls2_train_instances = {dataset: {} for dataset in datasets}
     cls1_test_instances  = {dataset: {} for dataset in datasets}
     cls2_test_instances  = {dataset: {} for dataset in datasets}
+
+    ENC_DIM = cls1_instances[datasets[0]][foci[0]][0].shape[2]
 
     for dataset in datasets:
         for focus in foci:

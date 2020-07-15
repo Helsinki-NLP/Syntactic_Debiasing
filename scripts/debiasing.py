@@ -17,31 +17,40 @@ from plotting import visualize
 sys.path.append("../../src/nullspace_projection")
 from src import debias
 
-N_LAYERS = 12
+
 
 class iNLP_Debiasing:
-    def __init__(self, classifier='LinearSVC', n_iterations=10, reg_coeff=0.00001):
+    def __init__(self, classifier='LinearSVC', n_iterations=10, reg_coeff=0.00001, model='BERT'):
         self.n_iterations = n_iterations
         if classifier == 'LinearSVC':
             self.classifier = LinearSVC
             self.params = {'fit_intercept': True, 'penalty': 'l2', 'C': reg_coeff, 'class_weight': None, 'dual': False, 'random_state': 0}
         elif classifier == 'LogisticRegression':
             self.classifier = LogisticRegression
-            self.params = {'fit_intercept': True, 'penalty': 'l2', 'C': reg_coeff, 'dual': False, 'random_state': 0, 'solver': 'lbfgs'}
+            self.params = {'fit_intercept': True, 'penalty': 'l2', 'C': reg_coeff, 'dual': False, 'random_state': 0}
 
-        self.P = np.zeros((12, 768, 768))
+        if model == 'BERT':
+            self.ENC_DIM = 768
+            self.N_LAYERS = 12
+        elif model == 'MT':
+            self.ENC_DIM = 512
+            self.N_LAYERS = 6           
+
+        self.P = np.zeros((self.N_LAYERS, self.ENC_DIM, self.ENC_DIM))
 
     def train(self, X_train, Y_train, X_test, Y_test, layer, do_set_P=True):
         min_acc = 0
         is_autoregressive = True
         dropout_rate = 0
 
+        dimension = X_train.shape[2]
+
         print(X_train.shape)
         print(Y_train.shape)
         print(X_test.shape)
         print(Y_test.shape)
 
-        P, rowspace_projs, Ws, iteration_accs = debias.get_debiasing_projection(self.classifier, self.params, self.n_iterations, 768, is_autoregressive, min_acc,
+        P, rowspace_projs, Ws, iteration_accs = debias.get_debiasing_projection(self.classifier, self.params, self.n_iterations, dimension, is_autoregressive, min_acc,
                                                         X_train[:,layer,:], Y_train, X_test[:,layer,:], Y_test,
                                                         Y_train_main=None, Y_dev_main=None, 
                                                         by_class = False, dropout_rate = dropout_rate)
@@ -57,7 +66,7 @@ class iNLP_Debiasing:
     def clean_data(self, X):
         X_cleaned = np.empty_like(X)
 
-        for layer in range(N_LAYERS):
+        for layer in range(self.N_LAYERS):
             if len(X.shape) == 3:
                 X_cleaned[:,layer,:] = (self.P[layer,:,:].dot(X[:,layer,:].T)).T
             else:
@@ -71,7 +80,7 @@ class iNLP_Debiasing:
         
         if not (is_transfer_projmatrix or is_transfer_classifier):
 
-            for layer in range(N_LAYERS):
+            for layer in range(self.N_LAYERS):
                 logfile = open(f'{logfile_base}_layer-{layer}.txt', 'a') 
                 iteration_accs = self.train(X_train[train_dataset][train_focus], 
                                              Y_train[train_dataset][train_focus], 
@@ -89,7 +98,7 @@ class iNLP_Debiasing:
 
         elif is_transfer_classifier:
             # if set, we try the test dataset on the same classifier that is trained on the train dataset
-            for layer in range(N_LAYERS):
+            for layer in range(self.N_LAYERS):
                 _ = self.train(X_train[train_dataset][train_focus], 
                                Y_train[train_dataset][train_focus], 
                                X_test[test_dataset][test_focus], 
@@ -100,7 +109,7 @@ class iNLP_Debiasing:
 
         elif is_transfer_projmatrix:
 
-            for layer in range(N_LAYERS):
+            for layer in range(self.N_LAYERS):
                 logfile = open(f'{logfile_base}_layer-{layer}_original.txt', 'w') 
             
                 print('Original Layer %d' % (layer+1))
@@ -121,7 +130,7 @@ class iNLP_Debiasing:
             X_train_cleaned_test_dataset_test_focus = self.clean_data(X_train[test_dataset][test_focus])
             X_test_cleaned_test_dataset_test_focus  = self.clean_data(X_test[test_dataset][test_focus])
 
-            for layer in range(N_LAYERS):
+            for layer in range(self.N_LAYERS):
 
                 print('"Cleaned" Layer %d' % (layer+1))
                 logfile = open(f'{logfile_base}_layer-{layer}_cleaned.txt', 'w') 
@@ -152,13 +161,12 @@ class BDD_Debiasing:
                   for calculating the bias_dir_vec
     '''
 
-    def __init__(self, cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances):
+    def __init__(self, cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances, model):
         self.cls1_train_instances = cls1_train_instances
         self.cls2_train_instances = cls2_train_instances
 
         self.cls1_test_instances = cls1_test_instances
         self.cls2_test_instances = cls2_test_instances
-
 
 
     def calc_bias_dir_vec(self):
