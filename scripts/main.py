@@ -41,20 +41,22 @@ def main(opt):
         for experiment_number in range(opt.exp_count):
             X_train, Y_train, X_test, Y_test, \
                 cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
-                    = arrange_data.train_test_split(cls1_instances, cls2_instances,
+                    = arrange_data.train_test_split(opt.model,
+                                                 cls1_instances, cls2_instances,
                                                  cls1_words, cls2_words,
                                                  opt.dataset, 
                                                  opt.focus,                                                 
                                                  opt.lexical_split,
                                                  opt.random_labels,
                                                  experiment_number,
+                                                 opt.language,
                                                  do_save=True)  
         sys.exit(0)
 
 
 
-    logfile_base = f'{opt.results_dir}/transfer_learning/{opt.train_on_dataset}-{opt.train_on_focus}_2_{opt.test_on_dataset}-{opt.test_on_focus}/transfer_results_reg_coeff_{opt.reg_coeff}_it_{opt.n_iterations}'
-    logfile_dir = f'{opt.results_dir}/transfer_learning/{opt.train_on_dataset}-{opt.train_on_focus}_2_{opt.test_on_dataset}-{opt.test_on_focus}'
+    logfile_base = f'{opt.results_dir}/transfer_learning/{opt.model}/{opt.language}/{opt.train_on_dataset}-{opt.train_on_focus}_2_{opt.test_on_dataset}-{opt.test_on_focus}/transfer_results_reg_coeff_{opt.reg_coeff}_it_{opt.n_iterations}'
+    logfile_dir = f'{opt.results_dir}/transfer_learning/{opt.model}/{opt.language}/{opt.train_on_dataset}-{opt.train_on_focus}_2_{opt.test_on_dataset}-{opt.test_on_focus}'
     os.system(f'mkdir -p {logfile_dir}')
 
     for f in glob.glob(logfile_base + '*'):
@@ -64,18 +66,20 @@ def main(opt):
         if opt.use_ready_splits:
             X_train, Y_train, X_test, Y_test, \
                 cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
-                    = arrange_data.load_splits(opt.dataset, opt.focus, experiment_number)
+                    = arrange_data.load_splits(opt.model, opt.dataset, opt.focus, experiment_number, opt.language)
 
         else:
             X_train, Y_train, X_test, Y_test, \
                 cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
-                    = arrange_data.train_test_split(cls1_instances, cls2_instances,
+                    = arrange_data.train_test_split(opt.model, 
+                                                     cls1_instances, cls2_instances,
                                                      cls1_words, cls2_words,
                                                      opt.dataset, 
                                                      opt.focus,                                         
                                                      opt.lexical_split,
                                                      opt.random_labels,
                                                      experiment_number,
+                                                     opt.language,
                                                      do_save=False)
 
 
@@ -130,7 +134,7 @@ def main(opt):
 
         if opt.vector_fun:
             if experiment_number == 0:
-                vc = vectorize.Vectorize()
+                vc = vectorize.Vectorize(opt.model)
              
 
             vc.set_data(cls1_instances, cls2_instances, cls1_words, cls2_words, opt.dataset, opt.focus)
@@ -179,6 +183,9 @@ if __name__ == '__main__':
     parser.add_argument('--model', required=False, type=str,
                         default='BERT',
                         help='encoder model to use [BERT (default) | MT]')  
+
+    parser.add_argument('--language', required=False, type=str,
+                        help='which language of translation is used, for MT model only [ DE | DE-EL | CS-DE-EL ]')  
 
     parser.add_argument('--load_reprs_path', required=False, type=str,
                         help='previously extracted representations\' path')

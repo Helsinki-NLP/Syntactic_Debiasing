@@ -12,13 +12,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 import debiasing
 import matplotlib.colors as colors
 
-N_LAYERS = 12
-ENC_DIM = 768
+
 
 class Vectorize():
     # FIXME: assumes one single word from each sentence at the moment.
 
-    def __init__(self):
+    def __init__(self, model):
 
         # RED LINE
         self.avg_sim_corr1_corr2 = np.array([])
@@ -35,6 +34,13 @@ class Vectorize():
         # YELLOW LINE
         self.avg_sim_wordC_notword_notC = np.array([])        
         self.avg_sim_clean_wordC_clean_notword_notC = np.array([])
+
+        if model == 'BERT':
+            self.n_layers = 12
+            self.enc_dim = 768
+        elif model == 'MT':
+            self.n_layers = 6
+            self.enc_dim = 512           
 
 
 
@@ -65,8 +71,8 @@ class Vectorize():
             for sidx, sentence in enumerate(self.cls1_words[dataset]):
                 for widx, word in enumerate(sentence):
                     
-                    diffvector = np.array(self.cls1_instances[dataset][sidx][widx, layer, :].reshape(-1,ENC_DIM)) \
-                                        - np.array(self.cls2_instances[dataset][sidx][widx, layer, :].reshape(-1, ENC_DIM))
+                    diffvector = np.array(self.cls1_instances[dataset][sidx][widx, layer, :].reshape(-1,self.enc_dim)) \
+                                        - np.array(self.cls2_instances[dataset][sidx][widx, layer, :].reshape(-1, self.enc_dim))
                     
                     self.diffvectors[dataset] = np.concatenate([self.diffvectors[dataset], diffvector], axis=0) \
                                                         if self.diffvectors[dataset].size else diffvector
@@ -110,11 +116,11 @@ class Vectorize():
             colors = ['r', 'b', 'g', 'k']
             setsize = 276 #len(self.diffvectors[datasets[0]])
             
-            cls1 = np.concatenate(self.cls1_instances[dataset][:setsize], axis=0).reshape(-1,ENC_DIM)
-            cls2 = np.concatenate(self.cls2_instances[dataset][:setsize], axis=0).reshape(-1,ENC_DIM)
+            cls1 = np.concatenate(self.cls1_instances[dataset][:setsize], axis=0).reshape(-1,self.enc_dim)
+            cls2 = np.concatenate(self.cls2_instances[dataset][:setsize], axis=0).reshape(-1,self.enc_dim)
 
             logging.debug('self.diffvectors[dataset].shape', self.diffvectors[dataset].shape)
-            mean_diffvector = self.diffvectors[dataset][3,:].reshape(-1,ENC_DIM) #np.mean(self.diffvectors[dataset], axis=0).reshape(-1,ENC_DIM)
+            mean_diffvector = self.diffvectors[dataset][3,:].reshape(-1,self.enc_dim) #np.mean(self.diffvectors[dataset], axis=0).reshape(-1,self.enc_dim)
             logging.debug('mean_diffvector.shape', mean_diffvector.shape)            
 
             logging.debug(cls1.shape)
@@ -136,20 +142,20 @@ class Vectorize():
     def calc_word_senses(self, dataset, focus, distance_fnc, with_debiasing=None, logfile=None):
 
             # RED LINE
-            acc_sim_corr1_corr2 = np.zeros((N_LAYERS,1))
-            acc_sim_cleancorr1_cleancorr2 = np.zeros((N_LAYERS,1))
+            acc_sim_corr1_corr2 = np.zeros((self.n_layers,1))
+            acc_sim_cleancorr1_cleancorr2 = np.zeros((self.n_layers,1))
             
             # BLUE LINE
-            acc_sim_wordC_anotherC = np.zeros((N_LAYERS,1))          
-            acc_sim_clean_wordC_clean_anotherC = np.zeros((N_LAYERS,1))
+            acc_sim_wordC_anotherC = np.zeros((self.n_layers,1))          
+            acc_sim_clean_wordC_clean_anotherC = np.zeros((self.n_layers,1))
 
             # GREEN LINE
-            acc_sim_wordC_notwordC = np.zeros((N_LAYERS,1))
-            acc_sim_clean_wordC_clean_notwordC = np.zeros((N_LAYERS,1))
+            acc_sim_wordC_notwordC = np.zeros((self.n_layers,1))
+            acc_sim_clean_wordC_clean_notwordC = np.zeros((self.n_layers,1))
 
             # YELLOW LINE
-            acc_sim_wordC_notword_notC = np.zeros((N_LAYERS,1))
-            acc_sim_clean_wordC_clean_notword_notC = np.zeros((N_LAYERS,1))
+            acc_sim_wordC_notword_notC = np.zeros((self.n_layers,1))
+            acc_sim_clean_wordC_clean_notword_notC = np.zeros((self.n_layers,1))
 
 
 
@@ -372,24 +378,24 @@ class Vectorize():
             figsize = (6, 4)
         fig=plt.figure(figsize=figsize)
 
-        plt.plot(range(N_LAYERS), np.mean(self.avg_sim_corr1_corr2, axis=1), 'r', linestyle='dotted', label=f'word1_A - word1_P')
-        plt.plot(range(N_LAYERS), np.mean(self.avg_sim_wordC_anotherC, axis=1), 'b', linestyle='dotted', label=f'word1_C - word2_C')
-        plt.plot(range(N_LAYERS), np.mean(self.avg_sim_wordC_notwordC, axis=1), 'k', linestyle='dotted', label=f'word1_C - otherword_C')
-        plt.plot(range(N_LAYERS), np.mean(self.avg_sim_wordC_notword_notC, axis=1), 'y', linestyle='dotted', label=f'word_1C - otherword_notC')
+        plt.plot(range(self.n_layers), np.mean(self.avg_sim_corr1_corr2, axis=1), 'r', linestyle='dotted', label=f'word1_A - word1_P')
+        plt.plot(range(self.n_layers), np.mean(self.avg_sim_wordC_anotherC, axis=1), 'b', linestyle='dotted', label=f'word1_C - word2_C')
+        plt.plot(range(self.n_layers), np.mean(self.avg_sim_wordC_notwordC, axis=1), 'k', linestyle='dotted', label=f'word1_C - otherword_C')
+        plt.plot(range(self.n_layers), np.mean(self.avg_sim_wordC_notword_notC, axis=1), 'y', linestyle='dotted', label=f'word_1C - otherword_notC')
         
-        plt.plot(range(N_LAYERS), np.mean(self.avg_sim_cleancorr1_cleancorr2, axis=1), 'r', linestyle='solid',label=f'clean_word1_A - clean_word1_P')
-        plt.plot(range(N_LAYERS), np.mean(self.avg_sim_clean_wordC_clean_anotherC, axis=1), 'b', linestyle='solid', label=f'clean_word1_C - clean_word2_C')
-        plt.plot(range(N_LAYERS), np.mean(self.avg_sim_clean_wordC_clean_notwordC, axis=1), 'k', linestyle='solid', label=f'clean_word1_C - clean_otherword_C')
-        plt.plot(range(N_LAYERS), np.mean(self.avg_sim_clean_wordC_clean_notword_notC, axis=1), 'y', linestyle='solid', label=f'clean_word1_C - clean_otherword_notC')
+        plt.plot(range(self.n_layers), np.mean(self.avg_sim_cleancorr1_cleancorr2, axis=1), 'r', linestyle='solid',label=f'clean_word1_A - clean_word1_P')
+        plt.plot(range(self.n_layers), np.mean(self.avg_sim_clean_wordC_clean_anotherC, axis=1), 'b', linestyle='solid', label=f'clean_word1_C - clean_word2_C')
+        plt.plot(range(self.n_layers), np.mean(self.avg_sim_clean_wordC_clean_notwordC, axis=1), 'k', linestyle='solid', label=f'clean_word1_C - clean_otherword_C')
+        plt.plot(range(self.n_layers), np.mean(self.avg_sim_clean_wordC_clean_notword_notC, axis=1), 'y', linestyle='solid', label=f'clean_word1_C - clean_otherword_notC')
         
         #plt.title(f'{dataset} dataset: Average of All Verbs')
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), fontsize='x-small', ncol=2, fancybox=True, shadow=True)
-        plt.xticks(range(N_LAYERS), range(1,N_LAYERS+1))
+        plt.xticks(range(self.n_layers), range(1,self.n_layers+1))
 
         plt.xlabel('Layers')
         plt.ylabel('Euclidean distance')
-        plt.ylim((0, 30))
-        plt.yticks([0, 5, 10, 15, 20, 25, 30])            
+        #plt.ylim((0, 30))
+        #plt.yticks([0, 5, 10, 15, 20, 25, 30])            
         
         if dataset[0:3] == 'RNN': dataset = 'TEMP-AP'
 
@@ -405,7 +411,7 @@ class Vectorize():
         logging.debug(f'in plot_word_senses_from_logs')
         n_datasets = len(datasets)
         n_foci = len(foci)
-        N_LAYERS = 12
+        self.n_layers = 12
 
         fig, axes = plt.subplots(n_datasets, n_foci, figsize=(24, 10))
 
@@ -423,18 +429,18 @@ class Vectorize():
                 subi = di * n_foci + fi
                 ax = flataxes[subi]
 
-                ax.plot(range(N_LAYERS), np.mean(distances['pairwise_between_class'], axis=1), 'r', linestyle='dotted', label=f'pairwise between-class distances (original)')
-                ax.plot(range(N_LAYERS), np.mean(distances['same-word within-class'], axis=1), 'b', linestyle='dotted', label=f'same-word within-class distances (original)')
-                ax.plot(range(N_LAYERS), np.mean(distances['global_within_class'], axis=1), 'k', linestyle='dotted', label=f'global within-class distances (original)')
-                ax.plot(range(N_LAYERS), np.mean(distances['global_between_class'], axis=1), 'y', linestyle='dotted', label=f'global between-class distances (original)')
+                ax.plot(range(self.n_layers), np.mean(distances['pairwise_between_class'], axis=1), 'r', linestyle='dotted', label=f'pairwise between-class distances (original)')
+                ax.plot(range(self.n_layers), np.mean(distances['same-word within-class'], axis=1), 'b', linestyle='dotted', label=f'same-word within-class distances (original)')
+                ax.plot(range(self.n_layers), np.mean(distances['global_within_class'], axis=1), 'k', linestyle='dotted', label=f'global within-class distances (original)')
+                ax.plot(range(self.n_layers), np.mean(distances['global_between_class'], axis=1), 'y', linestyle='dotted', label=f'global between-class distances (original)')
                 
-                ax.plot(range(N_LAYERS), np.mean(distances['pairwise_between_class_cleaned'], axis=1), 'r', linestyle='solid',label=f'pairwise between-class distances (cleaned)')
-                ax.plot(range(N_LAYERS), np.mean(distances['same-word within-class_cleaned'], axis=1), 'b', linestyle='solid', label=f'same-word within-class distances (cleaned)')
-                ax.plot(range(N_LAYERS), np.mean(distances['global_within_class_cleaned'], axis=1), 'k', linestyle='solid', label=f'global within-class distances (cleaned)')
-                ax.plot(range(N_LAYERS), np.mean(distances['global_between_class_cleaned'], axis=1), 'y', linestyle='solid', label=f'global between-class distances (original)')
+                ax.plot(range(self.n_layers), np.mean(distances['pairwise_between_class_cleaned'], axis=1), 'r', linestyle='solid',label=f'pairwise between-class distances (cleaned)')
+                ax.plot(range(self.n_layers), np.mean(distances['same-word within-class_cleaned'], axis=1), 'b', linestyle='solid', label=f'same-word within-class distances (cleaned)')
+                ax.plot(range(self.n_layers), np.mean(distances['global_within_class_cleaned'], axis=1), 'k', linestyle='solid', label=f'global within-class distances (cleaned)')
+                ax.plot(range(self.n_layers), np.mean(distances['global_between_class_cleaned'], axis=1), 'y', linestyle='solid', label=f'global between-class distances (original)')
 
-                ax.set_xticks(range(N_LAYERS))
-                ax.set_xticklabels(range(1,N_LAYERS+1))
+                ax.set_xticks(range(self.n_layers))
+                ax.set_xticklabels(range(1,self.n_layers+1))
 
                 if subi >= n_foci * (n_datasets - 1):
                     ax.set_xlabel('Layers', fontsize=10)
@@ -442,8 +448,8 @@ class Vectorize():
                 if subi % n_foci == 0:
                     ax.set_ylabel('Euclidean distance', fontsize=10)
 
-                ax.set_ylim((0, 30))
-                ax.set_yticks([0, 5, 10, 15, 20, 25, 30])            
+                #ax.set_ylim((0, 30))
+                #ax.set_yticks([0, 5, 10, 15, 20, 25, 30])            
                 
                 if dataset[0:3] == 'RNN':
                     alias = 'TEMP-AP'
@@ -479,12 +485,12 @@ class Vectorize():
         for widx, word in enumerate(self.cls1_words[dataset][random_sidx]):
             vec_word = self.cls1_instances[dataset][random_sidx][widx,:,:]
             dist_word = self.layerwise_eucdist(diff_corr1_corr2, vec_word)
-            plt.plot(range(N_LAYERS), dist_word, c=colors[widx], linestyle='solid', label=f'{word} [act]')
+            plt.plot(range(self.n_layers), dist_word, c=colors[widx], linestyle='solid', label=f'{word} [act]')
 
         for widx, word in enumerate(self.cls2_words[dataset][random_sidx]):
             vec_word = self.cls2_instances[dataset][random_sidx][widx,:,:]
             dist_word = self.layerwise_eucdist(diff_corr1_corr2, vec_word)
-            plt.plot(range(N_LAYERS), dist_word, c=colors[widx], linestyle='dotted', label=f'{word} [pass]')
+            plt.plot(range(self.n_layers), dist_word, c=colors[widx], linestyle='dotted', label=f'{word} [pass]')
 
         plt.title(f'{dataset} dataset: "{ref_word}[act] - {ref_word}[pass]"')
         plt.legend(loc='right', bbox_to_anchor=(1.05, 0), fontsize='x-small', ncol=10, fancybox=True, shadow=True)
@@ -493,8 +499,8 @@ class Vectorize():
 
 
     def layerwise_eucdist(self, vec1, vec2):
-        return np.array([np.linalg.norm(vec1[layer,:] - vec2[layer,:]) for layer in range(N_LAYERS)]).reshape(N_LAYERS,1)
+        return np.array([np.linalg.norm(vec1[layer,:] - vec2[layer,:]) for layer in range(self.n_layers)]).reshape(self.n_layers,1)
 
     def layerwise_cosine_sim(self, vec1, vec2):
-        return np.array([cosine_similarity(vec1[layer,:].reshape(1,-1), vec2[layer,:].reshape(1,-1)) for layer in range(N_LAYERS)]).reshape(N_LAYERS,1)
+        return np.array([cosine_similarity(vec1[layer,:].reshape(1,-1), vec2[layer,:].reshape(1,-1)) for layer in range(self.n_layers)]).reshape(self.n_layers,1)
             

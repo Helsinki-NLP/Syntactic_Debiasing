@@ -110,7 +110,7 @@ class iNLP_Debiasing:
         elif is_transfer_projmatrix:
 
             for layer in range(self.N_LAYERS):
-                logfile = open(f'{logfile_base}_layer-{layer}_original.txt', 'w') 
+                logfile = open(f'{logfile_base}_layer-{layer}_original.txt', 'a') 
             
                 print('Original Layer %d' % (layer+1))
                 iteration_accs_ds1 = self.train(X_train[train_dataset][train_focus], 
@@ -133,7 +133,7 @@ class iNLP_Debiasing:
             for layer in range(self.N_LAYERS):
 
                 print('"Cleaned" Layer %d' % (layer+1))
-                logfile = open(f'{logfile_base}_layer-{layer}_cleaned.txt', 'w') 
+                logfile = open(f'{logfile_base}_layer-{layer}_cleaned.txt', 'a') 
 
                 # try to re-debias the "cleaned" dataset:
                 iteration_accs_ds2 = self.train(X_train_cleaned_test_dataset_test_focus, 
