@@ -54,12 +54,13 @@ def main(opt):
         sys.exit(0)
 
 
+    if opt.transfer_projmatrix: 
+        logfile_base = f'{opt.results_dir}/transfer_learning/{opt.model}/{opt.language}/{opt.train_on_dataset}-{opt.train_on_focus}_2_{opt.test_on_dataset}-{opt.test_on_focus}/transfer_results_reg_coeff_{opt.reg_coeff}_it_{opt.n_iterations}'
+    else:
+        logfile_base = f'{opt.results_dir}/classification_acc/{opt.model}/{opt.language}/{opt.dataset[0]}-{opt.focus[0]}/class_acc_reg_coeff_{opt.reg_coeff}_it_{opt.n_iterations}'
+    os.system(f'mkdir -p {logfile_base}')
 
-    logfile_base = f'{opt.results_dir}/transfer_learning/{opt.model}/{opt.language}/{opt.train_on_dataset}-{opt.train_on_focus}_2_{opt.test_on_dataset}-{opt.test_on_focus}/transfer_results_reg_coeff_{opt.reg_coeff}_it_{opt.n_iterations}'
-    logfile_dir = f'{opt.results_dir}/transfer_learning/{opt.model}/{opt.language}/{opt.train_on_dataset}-{opt.train_on_focus}_2_{opt.test_on_dataset}-{opt.test_on_focus}'
-    os.system(f'mkdir -p {logfile_dir}')
-
-    for f in glob.glob(logfile_base + '*'):
+    for f in glob.glob(logfile_base + '/*'):
         os.remove(f)
 
     for experiment_number in range(opt.exp_count):
@@ -120,12 +121,16 @@ def main(opt):
 
         #----- MDS / tSNE plotting ------
         if opt.visualize: #'mds' or 'tsne'
-            visualize.project(cls1_instances[opt.test_on_dataset][test_on_focus], 
-                              cls2_instances[opt.test_on_dataset][test_on_focus], 
+            visualize.project(cls1_instances[opt.test_on_dataset][opt.test_on_focus], 
+                              cls2_instances[opt.test_on_dataset][opt.test_on_focus], 
+                              opt.model,
+                              opt.language,
                               opt.visualize)
             if opt.debias:
-                visualize.project(cls1_instances[opt.test_on_dataset][test_on_focus], 
-                                  cls2_instances[opt.test_on_dataset][test_on_focus], 
+                visualize.project(cls1_instances[opt.test_on_dataset][opt.test_on_focus], 
+                                  cls2_instances[opt.test_on_dataset][opt.test_on_focus], 
+                                  opt.model,
+                                  opt.language,
                                   opt.visualize, with_debiasing=db)
 
 
@@ -139,18 +144,22 @@ def main(opt):
 
             vc.set_data(cls1_instances, cls2_instances, cls1_words, cls2_words, opt.dataset, opt.focus)
             
-            #if opt.plot_vectors:
-            #    vc.plot_word_senses_from_logs(f'{opt.results_dir}/distances/', ['SICK', 'RNN-priming-short-1000'], ['verb', 'subject', 'object'])
-            #else:
             if experiment_number < opt.exp_count - 1:
                 vc.calc_word_senses(opt.test_on_dataset, opt.test_on_focus, 
                                     distance_fnc=vc.layerwise_eucdist, with_debiasing=db)
             else:
                 vc.calc_word_senses(opt.test_on_dataset, opt.test_on_focus, 
-                                    distance_fnc=vc.layerwise_eucdist, with_debiasing=db)
-                                    #logfile=f'{opt.results_dir}/distances/{opt.dataset[0]}_{opt.focus}_distances.pkl')
+                                    distance_fnc=vc.layerwise_eucdist, with_debiasing=db,
+                                    logfile=f'{opt.results_dir}/distances/{opt.model}/{opt.language}/{opt.dataset[0]}_{opt.focus[0]}_distances.pkl')
                 vc.plot_word_senses(opt.test_on_dataset, opt.test_on_focus, is_with_debiasing=True)
-                    
+                
+                if opt.plot_vectors:
+                    if opt.model == 'MT' and opt.language == 'DE-EL':
+                        do_plot_legend = True
+                    else:
+                        do_plot_legend = False
+                    vc.plot_word_senses_from_logs(f'{opt.results_dir}/distances/{opt.model}/{opt.language}', 
+                                        opt.model, opt.language, opt.dataset, ['verb', 'subject', 'object'], do_plot_legend)
 
         #------ SVCCA / PWCCA -------
 
@@ -297,10 +306,10 @@ if __name__ == '__main__':
 
     # --- sanity checks for interactions between the parameters --- 
     if opt.train_on_dataset and opt.test_on_dataset:
-        opt.dataset = [opt.train_on_dataset, opt.test_on_dataset]
+        opt.dataset = list(set([opt.train_on_dataset, opt.test_on_dataset]))
 
     if opt.train_on_focus and opt.test_on_focus:
-        opt.focus = [opt.train_on_focus, opt.test_on_focus]
+        opt.focus = list(set([opt.train_on_focus, opt.test_on_focus]))
 
     if not opt.train_on_dataset:
         opt.train_on_dataset = opt.dataset[0]

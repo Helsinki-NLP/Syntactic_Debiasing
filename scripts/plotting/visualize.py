@@ -5,22 +5,45 @@ from sklearn.manifold import TSNE
 from matplotlib import pyplot as plt
 
 
-def project(cls1_data, cls2_data, projection='mds', setsize=None, with_debiasing=None, figname=None):
+def project(cls1_data, cls2_data, model, language, projection='mds', setsize=None, with_debiasing=None, figname=None):
     if type(cls1_data) == list:
-        fig, axes = plt.subplots(3, 4, figsize=(9, 12))
+        n_layers = cls1_data[0].shape[1]
 
-        fig.tight_layout(pad=0.5)
-        flataxes = [ax for tmp in axes for ax in tmp]
+        #fig, axes = plt.subplots(3, 4, figsize=(9, 12))
+
+        if n_layers == 12:
+            LAYERS = [1-1, 6-1, 12-1]
+            ymax = 20
+            
+            
+        elif n_layers == 6:
+            LAYERS = [1-1, 3-1, 6-1]
+            ymax = 5
+            
+        fig, axes = plt.subplots(1, 3, figsize=(8, 3))
+
+        if model == 'BERT':
+            model_alias = 'BERT'
+        if model == 'MT' and language == 'DE':
+            model_alias = 'MT (EN > DE)'
+        if model == 'MT' and language == 'DE-EL':
+            model_alias = 'MT (EN > DE+EL)'                    
+
+        fig.suptitle(f'{model_alias} representations', fontsize=12)
+
+        fig.tight_layout(pad=0.1)
+        #flataxes = [ax for tmp in axes for ax in tmp]
+        flataxes = axes
 
         setsize = len(cls1_data)
-        if setsize > 500: setsize = 500
+        #if setsize > 500: setsize = 500
 
         X = np.r_[np.concatenate(cls1_data, axis=0)[:setsize,:,:], np.concatenate(cls2_data, axis=0)[:setsize,:,:]]
             
         if with_debiasing:
             X = with_debiasing.clean_data(X)
 
-        for layer in range(0, 12):
+        for l, layer in enumerate(LAYERS):
             print('plotting layer %d' % (layer+1))            
 
             if projection == 'mds':
@@ -35,19 +58,23 @@ def project(cls1_data, cls2_data, projection='mds', setsize=None, with_debiasing
 
             colors = ['red']*setsize + ['blue']*setsize
 
-            ax = flataxes[layer]
+            ax = flataxes[l]
             ax.set_aspect('equal', adjustable='box')
             ax.scatter(X_transformed[:,0], X_transformed[:,1], s=2, c=colors)
 
             #ax.set_xlim((-20, 20))
             #ax.set_ylim((-20, 20))
             ax.set_title('Layer %d' % (layer+1), fontsize=12)
+            ax.set_ylim([-ymax, ymax])
+            ax.set_xlim([-ymax, ymax])
 
             print('plotting done.')
 
     else:
         if not setsize:
             setsize = cls1_data.shape[0]
+        
+        n_layers = cls1_data.shape[1]
 
         colors = ['red']*setsize + ['blue']*setsize
 
@@ -58,6 +85,7 @@ def project(cls1_data, cls2_data, projection='mds', setsize=None, with_debiasing
 
         fig = plt.plot()
         plt.scatter(X_transformed[:,0], X_transformed[:,1], s=2, c=colors)
+
 
     if figname:
         plt.savefig(figname)
