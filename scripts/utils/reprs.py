@@ -77,6 +77,8 @@ def bert_extract(dataset, focus, data_path, cls1_name, cls2_name, to_device='cpu
 
     bert = bertify(device)
 
+    print(data_path + '/' + f'{dataset}.{cls1_name}.pos.parse.conll')
+
     cls1_file = open(data_path + '/' + f'{dataset}.{cls1_name}.pos.parse.conll', 'r', encoding="utf-8")
     firstline = cls1_file.readline()
     cls1_lines = connluify(cls1_file.readlines())
@@ -206,6 +208,79 @@ def bert_extract(dataset, focus, data_path, cls1_name, cls2_name, to_device='cpu
                 words_2 = [cls2_token['form'] for cls2_token in cls2_tokens]
 
 
+            cls1_instances.append(instance_1)
+            cls2_instances.append(instance_2)
+            
+            cls1_words.append(words_1)
+            cls2_words.append(words_2)
+
+
+# ----- Positive-Negative Task -----
+        if cls1_name == 'positive' and cls2_name == 'negative':
+
+            pos_tokens = cls1_tokens
+            neg_tokens = cls2_tokens
+
+            pos_bert_enc = cls1_bert_enc
+            neg_bert_enc = cls2_bert_enc
+
+            if focus != 'all':
+                if focus == 'verb':
+                    for neg_token in neg_tokens:
+                        if neg_token['deprel'].upper() == 'ROOT':
+                            WOI_neg_id = neg_token['id']
+                            WOI_neg_form = neg_token['form']
+                            break
+                    for pos_token in pos_tokens:
+                        if pos_token['deprel'].upper() == 'ROOT':
+                            WOI_pos_id = pos_token['id']
+                            WOI_pos_form = pos_token['form']
+                            break
+
+                if focus == 'subject':
+                    for neg_token in neg_tokens:
+                        if neg_token['deprel'].upper() == 'NSUBJ':
+                            WOI_neg_id = neg_token['id']
+                            WOI_neg_form = neg_token['form']
+                            break
+                    for pos_token in pos_tokens:
+                        if pos_token['deprel'].upper() == 'NSUBJ':
+                            WOI_pos_id = pos_token['id']
+                            WOI_pos_form = pos_token['form']
+                            break
+
+                if focus == 'object':
+                    WOI_pos_id = -1
+                    WOI_neg_id = -1
+                    for neg_token in neg_tokens:
+                        if neg_token['deprel'].upper() == 'OBJ':
+                            WOI_neg_id = neg_token['id']
+                            WOI_neg_form = neg_token['form']
+                            break
+                    for pos_token in pos_tokens:
+                        if pos_token['deprel'].upper() == 'OBJ':
+                            WOI_pos_id = pos_token['id']
+                            WOI_pos_form = pos_token['form']
+                            break
+                    if WOI_pos_id == -1 or WOI_neg_id == -1:
+                        continue
+
+                instance_1 = np.stack([np.reshape(pos_bert_enc[layer][:,WOI_pos_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
+                                                                                for layer in range(bert.N_LAYERS)], \
+                                                                                axis=1)
+                instance_2 = np.stack([np.reshape(neg_bert_enc[layer][:,WOI_neg_id-1,:],(1,bert.ENC_DIM)).detach().cpu().numpy() \
+                                                                                for layer in range(bert.N_LAYERS)], \
+                                                                                axis=1)
+
+                words_1 = [WOI_pos_form]
+                words_2 = [WOI_neg_form]
+
+                logging.debug('Positive: ' + WOI_pos_form)
+                logging.debug('Negative: ' + WOI_neg_form)
+
+
+            if focus == 'all':
+                pass
 
             cls1_instances.append(instance_1)
             cls2_instances.append(instance_2)
@@ -369,6 +444,86 @@ def mt_extract(dataset, focus, mt_reprs_path, data_path, cls1_name, cls2_name, t
             cls2_words.append(words_2)
 
 
+
+
+# ----- Positive-Negative Task -----
+        if cls1_name == 'positive' and cls2_name == 'negative':
+
+            pos_tokens = cls1_tokens
+            neg_tokens = cls2_tokens
+
+            pos_mt_enc = cls1_representation
+            neg_mt_enc = cls2_representation
+
+            if focus != 'all':
+                if focus == 'verb':
+                    for neg_token in neg_tokens:
+                        if neg_token['deprel'].upper() == 'ROOT':
+                            WOI_neg_id = neg_token['id']
+                            WOI_neg_form = neg_token['form']
+                            break
+                    for pos_token in pos_tokens:
+                        if pos_token['deprel'].upper() == 'ROOT':
+                            WOI_pos_id = pos_token['id']
+                            WOI_pos_form = pos_token['form']
+                            break
+
+                if focus == 'subject':
+                    for neg_token in neg_tokens:
+                        if neg_token['deprel'].upper() == 'NSUBJ':
+                            WOI_neg_id = neg_token['id']
+                            WOI_neg_form = neg_token['form']
+                            break
+                    for pos_token in pos_tokens:
+                        if pos_token['deprel'].upper() == 'NSUBJ':
+                            WOI_pos_id = pos_token['id']
+                            WOI_pos_form = pos_token['form']
+                            break
+
+                if focus == 'object':
+                    WOI_pos_id = -1
+                    WOI_neg_id = -1
+                    for neg_token in neg_tokens:
+                        if neg_token['deprel'].upper() == 'OBJ':
+                            WOI_neg_id = neg_token['id']
+                            WOI_neg_form = neg_token['form']
+                            break
+                    for pos_token in pos_tokens:
+                        if pos_token['deprel'].upper() == 'OBJ':
+                            WOI_pos_id = pos_token['id']
+                            WOI_pos_form = pos_token['form']
+                            break
+                    if WOI_pos_id == -1 or WOI_neg_id == -1:
+                        continue                
+
+                instance_1 = np.stack([np.reshape(pos_mt_enc[layer,WOI_pos_id-1,:],(1,MT_ENC_DIM)) \
+                                                                                for layer in range(MT_LAYERS)], \
+                                                                                axis=1)
+                instance_2 = np.stack([np.reshape(neg_mt_enc[layer,WOI_neg_id-1,:],(1,MT_ENC_DIM)) \
+                                                                                for layer in range(MT_LAYERS)], \
+                                                                                axis=1)
+
+                words_1 = [WOI_pos_form]
+                words_2 = [WOI_neg_form]
+
+                logging.debug('Positive: ' + WOI_pos_form)
+                logging.debug('Negative: ' + WOI_neg_form)
+
+
+            if focus == 'all':
+                pass
+
+            cls1_instances.append(instance_1)
+            cls2_instances.append(instance_2)
+            
+            cls1_words.append(words_1)
+            cls2_words.append(words_2)
+
+
+
+
+
+
     if dataset == 'RNN' and clauses_only:
         pass
 
@@ -415,7 +570,7 @@ def extract_representations(opt):
         for focus in opt.focus:
             logging.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
             
-            if opt.model == 'bert':
+            if opt.model == 'BERT':
                 cls1_instances[dataset][focus], cls2_instances[dataset][focus], cls1_words[dataset][focus], cls2_words[dataset][focus] \
                                 = bert_extract(dataset, focus, dataset_path, cls1_name, cls2_name,
                                           to_device=('cuda' if opt.cuda else 'cpu'))
@@ -423,6 +578,7 @@ def extract_representations(opt):
                 cls1_instances[dataset][focus], cls2_instances[dataset][focus], cls1_words[dataset][focus], cls2_words[dataset][focus] \
                                 = mt_extract(dataset, focus, opt.mt_reprs_path, dataset_path, cls1_name, cls2_name,
                                           to_device=('cuda' if opt.cuda else 'cpu'))                             
+                print(len(cls1_instances[dataset][focus]))
 
             logging.info('Saving representations to dataset: ' + dataset + ', focus: ' + focus + ' at ' + opt.save_reprs_path)            
             saveh5file(cls1_instances[dataset][focus], opt.save_reprs_path + '/' + f'{dataset}/{opt.task}/{dataset}.{cls1_name}.{focus}.h5')

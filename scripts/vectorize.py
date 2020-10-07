@@ -458,14 +458,13 @@ class Vectorize():
 
 
 
-    def plot_word_senses_from_logs(self, basedir, model, language, datasets, foci, do_plot_legend=True):
+    def plot_word_senses_from_logs(self, basedir, task, model, language, datasets, foci, do_plot_legend=True):
         logging.debug(f'in plot_word_senses_from_logs')
         n_datasets = len(datasets)
         n_foci = len(foci)
-        print(foci)
 
         if do_plot_legend:
-            fig, axes = plt.subplots(n_datasets, n_foci, figsize=(24, 3.73))
+            fig, axes = plt.subplots(n_datasets, n_foci, figsize=(24, 4.5))
         else:
             fig, axes = plt.subplots(n_datasets, n_foci, figsize=(24, 3))
 
@@ -475,7 +474,7 @@ class Vectorize():
 
         for di, dataset in enumerate(datasets):
             for fi, focus in enumerate(foci):
-                loadfile = f'{basedir}/{dataset}_{focus}_distances.pkl'
+                loadfile = f'{basedir}/{model}/{language}/{dataset}_{focus}_distances.pkl'
                 
                 logging.debug(f'   loading distances from {loadfile}')
                 with open(loadfile, 'rb') as fin:
@@ -484,51 +483,65 @@ class Vectorize():
                 subi = di * n_foci + fi
                 ax = flataxes[subi]
 
-                ax.plot(range(self.n_layers), np.mean(distances['pairwise_between_class'], axis=1), 'r', linestyle='dotted', label=f'pairwise between-class distances (original)')
-                ax.plot(range(self.n_layers), np.mean(distances['same-word within-class'], axis=1), 'b', linestyle='dotted', label=f'same-word within-class distances (original)')
-                ax.plot(range(self.n_layers), np.mean(distances['global_within_class'], axis=1), 'k', linestyle='dotted', label=f'global within-class distances (original)')
-                ax.plot(range(self.n_layers), np.mean(distances['global_between_class'], axis=1), 'y', linestyle='dotted', label=f'global between-class distances (original)')
-                
-                ax.plot(range(self.n_layers), np.mean(distances['pairwise_between_class_cleaned'], axis=1), 'r', linestyle='solid',label=f'pairwise between-class distances (cleaned)')
-                ax.plot(range(self.n_layers), np.mean(distances['same-word within-class_cleaned'], axis=1), 'b', linestyle='solid', label=f'same-word within-class distances (cleaned)')
-                ax.plot(range(self.n_layers), np.mean(distances['global_within_class_cleaned'], axis=1), 'k', linestyle='solid', label=f'global within-class distances (cleaned)')
-                ax.plot(range(self.n_layers), np.mean(distances['global_between_class_cleaned'], axis=1), 'y', linestyle='solid', label=f'global between-class distances (original)')
+                if model == 'BERT':
+                    n_layers = 12
+                else:
+                    n_layers = 6
 
-                ax.set_xticks(range(self.n_layers))
-                ax.set_xticklabels(range(1,self.n_layers+1))
+                ax.plot(range(n_layers), np.mean(distances['pairwise_between_class'], axis=1), 'r', linestyle='dotted', label=f'pairwise inter-class distances (original)', linewidth=3)
+                ax.plot(range(n_layers), np.mean(distances['global_between_class'], axis=1), 'y', linestyle='dotted', label=f'global inter-class distances (original)', linewidth=3)
+                ax.plot(range(n_layers), np.mean(distances['same-word within-class'], axis=1), 'b', linestyle='dotted', label=f'same-word intra-class distances (original)', linewidth=3)
+                ax.plot(range(n_layers), np.mean(distances['global_within_class'], axis=1), 'k', linestyle='dotted', label=f'global intra-class distances (original)', linewidth=3)
+                
+                ax.plot(range(n_layers), np.mean(distances['pairwise_between_class_cleaned'], axis=1), 'r', linestyle='solid',alpha=0.5, label=f'pairwise inter-class distances (cleaned)', linewidth=3)
+                ax.plot(range(n_layers), np.mean(distances['global_between_class_cleaned'], axis=1), 'y', linestyle='solid', label=f'global inter-class distances (cleaned)', linewidth=3)
+                ax.plot(range(n_layers), np.mean(distances['same-word within-class_cleaned'], axis=1), 'b', linestyle='solid', label=f'same-word intra-class distances (cleaned)', linewidth=3)                
+                ax.plot(range(n_layers), np.mean(distances['global_within_class_cleaned'], axis=1), 'k', linestyle='solid', alpha=0.5, label=f'global intra-class distances (cleaned)', linewidth=3)
+                
+                ax.set_xticks(range(n_layers))
+                ax.set_xticklabels(range(1,n_layers+1))
 
                 if subi >= n_foci * (n_datasets - 1):
-                    ax.set_xlabel('Layers', fontsize=10)
+                    ax.set_xlabel('Layers', fontsize=16)
 
                 if subi % n_foci == 0:
-                    ax.set_ylabel('Euclidean distance', fontsize=10)
+                    ax.set_ylabel('Euclidean distance', fontsize=16)
 
                 if model == 'BERT':
                     ax.set_ylim((0, 30))
                     ax.set_yticks([0, 5, 10, 15, 20, 25, 30])   
                 if model == 'MT':
                     ax.set_ylim((0, 4))
-                    ax.set_yticks([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4])   
+                    ax.set_yticks([0, 1, 2, 3, 4])   
 
+                ax.tick_params(labelsize=16)
                     
                 if dataset[0:3] == 'RNN':
-                    ds_alias = 'TEMPL-AP'
+                    if task == 'active-passive':
+                        ds_alias = 'TEMPL-PAS'
+                    elif task == 'positive-negative':
+                        ds_alias = 'TEMPL-NEG'
                 else:
                     ds_alias = 'SICK'
 
                 if model == 'BERT':
-                    model_alias = 'BERT encoded-'
+                    model_alias = 'BERT'
                 if model == 'MT' and language == 'DE':
-                    model_alias = 'MT (EN > DE) encoded-'
+                    model_alias = 'MT (EN > DE)'
                 if model == 'MT' and language == 'DE-EL':
-                    model_alias = 'MT (EN > DE+EL) encoded-'                    
+                    model_alias = 'MT (EN > DE+EL)'                    
 
-                if focus == 'verb': ax.set_title(f'{model_alias}{ds_alias}: VERBS', fontsize=10)
-                if focus == 'subject': ax.set_title(f'{model_alias}{ds_alias}: A-SUBJ / P-AG', fontsize=10)
-                if focus == 'object': ax.set_title(f'{model_alias}{ds_alias}: A-OBJ / P-SUBJ', fontsize=10)
+                if task == 'active-passive':
+                    if focus == 'verb': ax.set_title(f'{model_alias} - VERB', fontsize=16)
+                    if focus == 'subject': ax.set_title(f'{model_alias} - A-SUBJ / P-AG', fontsize=16)
+                    if focus == 'object': ax.set_title(f'{model_alias} - A-OBJ / P-SUBJ', fontsize=16)
+                elif task == 'positive-negative':
+                    if focus == 'verb': ax.set_title(f'{model_alias} - VERB', fontsize=16)
+                    if focus == 'subject': ax.set_title(f'{model_alias} - SUBJECT', fontsize=16)
+                    if focus == 'object': ax.set_title(f'{model_alias} - OBJECT', fontsize=16)
 
         if do_plot_legend:
-            plt.legend(loc='upper left', bbox_to_anchor=(-0.345, -0.22), fontsize='x-small', ncol=2, fancybox=True, shadow=True)
+            plt.legend(loc='upper left', bbox_to_anchor=(-1.98, -0.32), fontsize='x-large', ncol=2, fancybox=True, shadow=True)
         
         plt.show()
 
