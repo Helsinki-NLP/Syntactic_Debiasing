@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 layer_count = 3
 
-def project(cls1_data, cls2_data, focus, model, language, projection='mds', setsize=None, with_debiasing=None, figname=None):
+def project(cls1_data, cls2_data, opt, setsize=None, with_debiasing=None, figname=None):
     if type(cls1_data) == list:
         n_layers = cls1_data[0].shape[1]
 
@@ -23,15 +23,14 @@ def project(cls1_data, cls2_data, focus, model, language, projection='mds', sets
             
         fig, axes = plt.subplots(1, layer_count, figsize=(layer_count*3, 3))
 
-        if model == 'BERT':
+        if opt.model == 'BERT':
             model_alias = 'BERT'
-        if model == 'MT' and language == 'DE':
+        if opt.model == 'MT' and opt.language == 'DE':
             model_alias = 'MT (EN>DE)'
-        if model == 'MT' and language == 'DE-EL':
+        if opt.model == 'MT' and opt.language == 'DE-EL':
             model_alias = 'MT (EN>DE+EL)'                    
 
-        #fig.suptitle(f'{model_alias} representations', fontsize=12)
-
+        
         fig.tight_layout(pad=0.1)
         #flataxes = [ax for tmp in axes for ax in tmp]
         flataxes = axes
@@ -47,13 +46,13 @@ def project(cls1_data, cls2_data, focus, model, language, projection='mds', sets
         for l, layer in enumerate(LAYERS):
             print('plotting layer %d' % (layer+1))            
 
-            if projection == 'mds':
+            if opt.visualize == 'mds':
                 mds = MDS(n_components=2)
                 X_transformed = mds.fit_transform(X[:,layer,:].astype(np.float64))
-            if projection == 'pca':
+            if opt.visualize == 'pca':
                 pca = PCA(n_components=2)
                 X_transformed = pca.fit_transform(X[:,layer,:].astype(np.float64))
-            if projection == 'tsne':
+            if opt.visualize == 'tsne':
                 tsne = TSNE(n_components=2, verbose=1)
                 X_transformed = tsne.fit_transform(X[:,layer,:].astype(np.float64))
 
@@ -73,7 +72,7 @@ def project(cls1_data, cls2_data, focus, model, language, projection='mds', sets
             focus_aliases = {'verb': 'VERBS', 'subject': 'SUBJECTS', 'object':'OBJECTS'}
             
             if layer_count == 1:
-                ax.set_title(f'{focus_aliases[focus]}', fontsize=24)
+                ax.set_title(f'{focus_aliases[opt.test_on_focus]}', fontsize=24)
             elif layer_count == 3:
                 ax.set_title(f'Layer {LAYERS[l]+1}', fontsize=24)
 

@@ -9,14 +9,16 @@ import random
 import argparse
 import logging
 import ipdb
-from utils import reprs
-from utils import arrange_data
+
 import debiasing
 import vectorize
+from utils import reprs
+from utils import arrange_data
+from utils import dirs
 from plotting import visualize
-from cca import CCA
 
 def main(opt):
+
     #----- Loading data -----
     if opt.load_reprs_path:
         logging.info('Loading representations')
@@ -30,179 +32,123 @@ def main(opt):
             sys.exit(0)
 
 
-    #----- Train-Test Splits -----
+    #----- Create and Save Train-Test Splits -----
     if opt.save_splits:
-        logging.info('Separating training and test sets')
-        #FIXME: This assumes single lexical item from each example sentence for now, eg. a verb.
+        logging.info('Dividing data into training and test sets and saving these into splits/ dir')
 
-        for experiment_number in range(opt.exp_count):
-            X_train, Y_train, X_test, Y_test, \
-                cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
-                    = arrange_data.train_test_split(opt.task,
-                                                    opt.model,
-                                                    cls1_instances, cls2_instances,
-                                                    cls1_words, cls2_words,
-                                                    opt.dataset,
-                                                    opt.focus,                                           
-                                                    opt.lexical_split,
-                                                    opt.random_labels,
-                                                    experiment_number,
-                                                    opt.language,
-                                                    do_save=True)
+        _, _, _, _, _, _, _, _ = arrange_data.train_test_split(cls1_instances, 
+                                                               cls2_instances,
+                                                               cls1_words, 
+                                                               cls2_words,
+                                                               opt,
+                                                               do_save=True)
         sys.exit(0)
 
 
-    if opt.transfer_projmatrix:
-        logfile_base = f'{opt.results_dir}/transfer_learning/'+   \
-                       f'{opt.task}/{opt.model}/{opt.language}/'+ \
-                       f'{opt.train_on_dataset}-{opt.train_on_focus}_2_{opt.test_on_dataset}-{opt.test_on_focus}/'+ \
-                       f'transfer_results_reg_coeff_{opt.reg_coeff}_it_{opt.n_iterations}'
-    else:
-        logfile_base = f'{opt.results_dir}/classification_acc/'+  \
-                       f'{opt.task}/{opt.model}/{opt.language}/'+ \
-                       f'{opt.dataset[0]}-{opt.focus[0]}/'+       \
-                       f'class_acc_reg_coeff_{opt.reg_coeff}_it_{opt.n_iterations}'
+    #----- Arrange where to log the results -----
+    logfile_base = dirs.prep_logfile(opt)
 
-    os.system(f'mkdir -p {logfile_base}')
 
-    for f in glob.glob(logfile_base + '/*'):
-        os.remove(f)
+    #----- MAIN LOOP -----
+    #      repeat exp_count times
 
     for experiment_number in range(opt.exp_count):
+
+        logging.info(f'\n\n\nExperiment #{experiment_number}\n')
+
+
+        #----- 1. Acquiring the train-test splits -----
+
+        # If we are loding from existing pre-ready split files:
         if opt.use_ready_splits:
             X_train, Y_train, X_test, Y_test, \
-                cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
-                    = arrange_data.load_splits(opt.task,
-                                               opt.model,
-                                               opt.dataset,
-                                               opt.focus,
-                                               experiment_number,
-                                               opt.language)
+            cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
+                    = arrange_data.load_splits(experiment_number, opt)
 
+        # If we want to create a split on the fly:
         else:
             X_train, Y_train, X_test, Y_test, \
-                cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
-                    = arrange_data.train_test_split(opt.task,
-                                                    opt.model, 
-                                                    cls1_instances, cls2_instances,
-                                                    cls1_words, cls2_words,
-                                                    opt.dataset,
-                                                    opt.focus,                                         
-                                                    opt.lexical_split,
-                                                    opt.random_labels,
-                                                    experiment_number,
-                                                    opt.language,
+            cls1_train_instances, cls2_train_instances, cls1_test_instances, cls2_test_instances \
+                    = arrange_data.train_test_split(cls1_instances, 
+                                                    cls2_instances,
+                                                    cls1_words, 
+                                                    cls2_words,
+                                                    opt,
                                                     do_save=False)
 
 
-        #----- Debiasing -----
+        #----- 2. Debiasing -----
+
+        # If iNLP debiasing is selected: 
         if opt.debias == 'iNLP':
             db = debiasing.iNLP_Debiasing(classifier='LogisticRegression',
-                                          n_iterations=opt.n_iterations+1,
+                                          n_iterations=opt.n_iterations,
                                           reg_coeff=opt.reg_coeff,
                                           model=opt.model)
 
-            db.debias(X_train, Y_train, X_test, Y_test,
-                      opt.train_on_dataset,
-                      opt.test_on_dataset,
-                      opt.train_on_focus,
-                      opt.test_on_focus,
-                      opt.transfer_projmatrix,
-                      opt.transfer_classifier, 
-                      opt.visualize,
-                      logfile_base)
+            db.debias(X_train, Y_train, X_test, Y_test, opt, logfile_base)
 
 
-        # FIXME: correct for layer-wise cleaning.
+        # IF Bias-Direction Debiasing is selected:
         elif opt.debias == 'BDD':
-            db = debiasing.BDD_Debiasing(cls1_train_instances[opt.train_on_dataset][opt.train_on_focus],
-                                         cls2_train_instances[opt.train_on_dataset][opt.train_on_focus],
-                                         cls1_test_instances[opt.test_on_dataset][opt.test_on_focus],
-                                         cls2_test_instances[opt.test_on_dataset][opt.test_on_focus])
-            db.calc_bias_dir_vec()
-            db.plot_before_after()
-
-
-        elif opt.debias == 'GBDD':
-            db = debiasing.GBDD_Debiasing(cls1_train_instances[opt.train_on_dataset][opt.train_on_focus],
-                                          cls2_train_instances[opt.train_on_dataset][opt.train_on_focus],
-                                          cls1_test_instances[opt.test_on_dataset][opt.test_on_focus],
-                                          cls2_test_instances[opt.test_on_dataset][opt.test_on_focus])
+            # FIXME: correct for layer-wise cleaning
+            db = debiasing.BDD_Debiasing(cls1_train_instances[opt.train_dataset][opt.train_focus],
+                                          cls2_train_instances[opt.train_dataset][opt.train_focus],
+                                          cls1_test_instances[opt.test_dataset][opt.test_focus],
+                                          cls2_test_instances[opt.test_dataset][opt.test_focus])
             #db.calc_bias_dir_vec()
             #db.plot_before_after()
             db.rotate(n_iterations=opt.n_iterations)
 
-        # to-implement
-        #elif opt.debias == 'BAM':
-        #    db = debiasing.BAM_Debiasing()
-        #    db.debias(X_train, Y_train, X_test, Y_test)
 
 
-        #----- MDS / tSNE plotting ------
+        #----- 3. MDS / tSNE plotting ------
         if opt.visualize: #'mds' or 'tsne'
-            visualize.project(cls1_instances[opt.test_on_dataset][opt.test_on_focus],
-                              cls2_instances[opt.test_on_dataset][opt.test_on_focus],
-                              opt.test_on_focus,
-                              opt.model,
-                              opt.language,
-                              opt.visualize)
+
+            # Visualize original data (_before_ transformation)
+            visualize.project(cls1_instances[opt.test_dataset][opt.test_focus],
+                              cls2_instances[opt.test_dataset][opt.test_focus],
+                              opt)
+            
+            # If we have done debiasing, visualize also _after_ transformation
             if opt.debias:
-                visualize.project(cls1_instances[opt.test_on_dataset][opt.test_on_focus],
-                                  cls2_instances[opt.test_on_dataset][opt.test_on_focus],
-                                  opt.test_on_focus,
-                                  opt.model,
-                                  opt.language,
-                                  opt.visualize, with_debiasing=db)
+                visualize.project(cls1_instances[opt.test_dataset][opt.test_focus],
+                                  cls2_instances[opt.test_dataset][opt.test_focus],
+                                  opt, 
+                                  with_debiasing=db)
 
 
-        #----- Vector Explorations -----
 
+        #----- 4. Vector Explorations -----
 
         if opt.vector_fun:
             if experiment_number == 0:
                 vc = vectorize.Vectorize(opt.model)
 
-            vc.set_data(cls1_instances, cls2_instances, cls1_words, cls2_words, opt.dataset, opt.focus)
+            vc.set_data(cls1_instances, cls2_instances, cls1_words, cls2_words, opt)
+            vectors_base_logdir = f'{opt.results_dir}/distances/{opt.task}/'
 
-            if opt.plot_vectors:
-                if opt.model == 'MT' and opt.language == 'DE-EL':
-                    do_plot_legend = True
-                else:
-                    do_plot_legend = False
-                vc.plot_word_senses_from_logs(f'{opt.results_dir}/distances/{opt.task}/',
-                                              opt.task,
-                                              opt.model,
-                                              opt.language,
-                                              opt.dataset,
-                                              ['verb', 'subject', 'object'],
-                                              do_plot_legend)
+            if opt.plot_vectors:    
+                foci_to_plot = ['verb', 'subject', 'object']
+                vc.plot_word_senses_from_logs(vectors_base_logdir, opt, foci_to_plot)
 
 
+            # Before the final experiment:
             elif experiment_number < opt.exp_count - 1:
-                vc.calc_word_senses(opt.test_on_dataset, opt.test_on_focus,
+                vc.calc_word_senses(opt.test_dataset, opt.test_focus,
                                     distance_fnc=vc.layerwise_eucdist, with_debiasing=db)
+
+            # The final experiment:
             else:
-                vc.calc_word_senses(opt.test_on_dataset, opt.test_on_focus,
+                # At the end of the final experiment, save all the accumulated results
+                vc.calc_word_senses(opt.test_dataset, opt.test_focus,
                                     distance_fnc=vc.layerwise_eucdist, with_debiasing=db,
-                                    logfile=f'{opt.results_dir}/distances/'+ \
-                                            f'{opt.task}/{opt.model}/{opt.language}/'+ \
-                                            f'{opt.dataset[0]}_{opt.focus[0]}_distances.pkl')
-                vc.plot_word_senses(opt.test_on_dataset, opt.test_on_focus, is_with_debiasing=True)
+                                    log_dir=vectors_base_logdir)
+                # Then plot
+                vc.plot_word_senses(opt)
 
 
-        #------ SVCCA / PWCCA -------
-
-        if opt.cca:
-            cca = CCA(cls1_instances[opt.train_on_dataset][opt.train_on_focus],
-                      cls2_instances[opt.train_on_dataset][opt.train_on_focus],
-                      opt.train_on_layer-1,
-                      cls1_instances[opt.test_on_dataset][opt.test_on_focus],
-                      cls2_instances[opt.test_on_dataset][opt.test_on_focus],
-                      opt.test_on_layer-1)
-
-            cca.apply_pwcca()
-            cca.apply_svcca()
-
+# --- end of the main function
 
 
 
@@ -211,19 +157,18 @@ def main(opt):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dataset', type=str, required=False, default=['SICK'], nargs='+',
+    parser.add_argument('--datasets', type=str, required=False, default=['SICK'], nargs='+',
                         help='dataset to use [SICK (default) | SICK_tensecorr (manually tense-corrected) | RNN]')
 
     parser.add_argument('--dataset_path', required=False, type=str, nargs='+',
-                        default=['/scratch/project_2002233/debiasing/data/SICK/Filtered'],
-                        help='path to the raw dataset location. Defaults to puhti:SICK location')
+                        help='path to the raw dataset location')
 
     parser.add_argument('--model', required=False, type=str,
                         default='BERT',
                         help='encoder model to use [BERT (default) | MT]')
 
     parser.add_argument('--language', required=False, type=str,
-                        help='which language of translation is used, for MT model only [ DE | DE-EL | CS-DE-EL ]')
+                        help='which language of translation is used, used for MT model only [ DE | DE-EL | CS-DE-EL ]')
 
     parser.add_argument('--load_reprs_path', required=False, type=str,
                         help='previously extracted representations\' path')
@@ -240,7 +185,7 @@ if __name__ == '__main__':
     parser.add_argument('--task', required=True, default='active-passive',
                         help='which syntactic information to debias, default active-passive')
 
-    parser.add_argument('--focus', required=False, type=str, default='verb', nargs='+',
+    parser.add_argument('--foci', required=False, type=str, default='verb', nargs='+',
                         help='which part of the sentence to focus on [verb [default] | subject | object | all]')
 
     parser.add_argument('--extract_only', action='store_true',
@@ -267,16 +212,16 @@ if __name__ == '__main__':
     parser.add_argument('--use_shared_vocab', action='store_true',
                         help='restricts the different datasets to use only the instances with shared vocabulary')
 
-    parser.add_argument('--train_on_dataset', required=False, type=str,
+    parser.add_argument('--train_dataset', required=False, type=str,
                         help='which dataset to train on (defaults to dataset) [SICK | RNN]')
 
-    parser.add_argument('--test_on_dataset', required=False, type=str,
+    parser.add_argument('--test_dataset', required=False, type=str,
                         help='which dataset to test on (defaults to dataset) [SICK | RNN]')
 
-    parser.add_argument('--train_on_focus', required=False, type=str,
+    parser.add_argument('--train_focus', required=False, type=str,
                         help='which part of sentence to train on (defaults to focus) [verb | subject | object | all]')
 
-    parser.add_argument('--test_on_focus', required=False, type=str,
+    parser.add_argument('--test_focus', required=False, type=str,
                         help='which part of sentence to test on (defaults to focus) [verb | subject | object | all]')
 
     parser.add_argument('--train_on_layer', required=False, type=int,
@@ -334,38 +279,38 @@ if __name__ == '__main__':
 
 
     # --- sanity checks for interactions between the parameters ---
-    if opt.train_on_dataset and opt.test_on_dataset:
-        opt.dataset = list(set([opt.train_on_dataset, opt.test_on_dataset]))
+    if opt.train_dataset and opt.test_dataset:
+        opt.datasets = list(set([opt.train_dataset, opt.test_dataset]))
 
-    if opt.train_on_focus and opt.test_on_focus:
-        opt.focus = list(set([opt.train_on_focus, opt.test_on_focus]))
+    if opt.train_focus and opt.test_focus:
+        opt.foci = list(set([opt.train_focus, opt.test_focus]))
 
-    if not opt.train_on_dataset:
-        opt.train_on_dataset = opt.dataset[0]
+    if not opt.train_dataset:
+        opt.train_dataset = opt.datasets[0]
 
-    if not opt.test_on_dataset:
-        opt.test_on_dataset = opt.dataset[0]
+    if not opt.test_dataset:
+        opt.test_dataset = opt.datasets[0]
 
-    if not opt.train_on_focus:
-        opt.train_on_focus = opt.focus[0]
+    if not opt.train_focus:
+        opt.train_focus = opt.foci[0]
 
-    if not opt.test_on_focus:
-        opt.test_on_focus = opt.focus[0]
+    if not opt.test_focus:
+        opt.test_focus = opt.foci[0]
 
 
     if opt.transfer_projmatrix and opt.transfer_classifier:
         logging.error('--transfer_projmatrix and --transfer_classifier cannot be set at the same time')
         sys.exit(1)
 
-    if opt.focus == 'all' and opt.debias == 'GBDD':
+    if opt.foci == 'all' and opt.debias == 'GBDD':
         logging.error('GBDD debiasing is usable with only single word focus for now')
         sys.exit(1)
 
-    if opt.focus == 'all' and opt.lexical_split:
+    if opt.foci == 'all' and opt.lexical_split:
         logging.error('Lexical split is possible for only single word focus')
         sys.exit(1)
 
-    if opt.focus == 'all' and opt.random_labels:
+    if opt.foci == 'all' and opt.random_labels:
         logging.error('Random label baseline is possible for only single word focus for now')
         sys.exit(1)
     # ---

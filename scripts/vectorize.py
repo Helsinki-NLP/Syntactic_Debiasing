@@ -44,17 +44,17 @@ class Vectorize():
 
 
 
-    def set_data(self, cls1_instances, cls2_instances, cls1_words, cls2_words, datasets, foci):
+    def set_data(self, cls1_instances, cls2_instances, cls1_words, cls2_words, opt):
         self.cls1_instances = {}
         self.cls2_instances = {}
 
-        for focus in foci:
-            for dataset in datasets:
-                self.cls1_instances[dataset] = {focus: [] for focus in foci}
+        for focus in opt.foci:
+            for dataset in opt.datasets:
+                self.cls1_instances[dataset] = {focus: [] for focus in opt.foci}
                 for cls1_instance in cls1_instances[dataset][focus]:
                     self.cls1_instances[dataset][focus].append(cls1_instance[:,:,:].detach().numpy())
 
-                self.cls2_instances[dataset] = {focus: [] for focus in foci}
+                self.cls2_instances[dataset] = {focus: [] for focus in opt.foci}
                 for cls2_instance in cls2_instances[dataset][focus]:
                     self.cls2_instances[dataset][focus].append(cls2_instance[:,:,:].detach().numpy())
 
@@ -62,84 +62,12 @@ class Vectorize():
         self.cls1_words = cls1_words
         self.cls2_words = cls2_words
 
-        self.datasets = datasets
-        self.foci = foci
-
-    def extract_diffvectors(self, datasets, layer, plotting_on='True'):
-        print('extracting')
-        for dataset in datasets:
-            for sidx, sentence in enumerate(self.cls1_words[dataset]):
-                for widx, word in enumerate(sentence):
-                    
-                    diffvector = np.array(self.cls1_instances[dataset][sidx][widx, layer, :].reshape(-1,self.enc_dim)) \
-                                        - np.array(self.cls2_instances[dataset][sidx][widx, layer, :].reshape(-1, self.enc_dim))
-                    
-                    self.diffvectors[dataset] = np.concatenate([self.diffvectors[dataset], diffvector], axis=0) \
-                                                        if self.diffvectors[dataset].size else diffvector
-                    self.diffclasses[dataset][word] = np.concatenate([self.diffclasses[dataset][word], diffvector], axis=0) \
-                                                                if self.diffclasses[dataset][word].size else diffvector
-
-                    logging.debug(self.diffvectors[dataset].shape)
-
-
-            if plotting_on:
-                #self.plot_diffvectors(datasets)
-                self.plot_instances_vs_diffvectors(datasets, layer)
+        self.datasets = opt.datasets
+        self.foci = opt.foci
 
 
 
-    def plot_diffvectors(self, datasets):
-        fig=plt.figure()
-        colors = ['r', 'b', 'g', 'k']
-        setsize = 276 #len(self.diffvectors[datasets[0]])
-        
-        if len(datasets) == 1:
-            X = np.r_[self.diffvectors[datasets[0]][:setsize, :]]
-        elif len(datasets) == 2:
-            X = np.r_[self.diffvectors[datasets[0]][:setsize, :], self.diffvectors[datasets[1]][:setsize, :]]
-            
-        mds = MDS(n_components=2)
-        X_transformed = mds.fit_transform(X)
-
-        colors = ['red']*setsize + ['blue']*setsize
-
-        plt.scatter(X_transformed[:,0], X_transformed[:,1], color=colors)
-        plt.show()
-
-
-
-
-    def plot_instances_vs_diffvectors(self, datasets, layer):
-        for dataset in datasets:
-            logging.debug('self.diffvectors[dataset].shape', self.diffvectors[dataset].shape)
-            fig=plt.figure()
-            colors = ['r', 'b', 'g', 'k']
-            setsize = 276 #len(self.diffvectors[datasets[0]])
-            
-            cls1 = np.concatenate(self.cls1_instances[dataset][:setsize], axis=0).reshape(-1,self.enc_dim)
-            cls2 = np.concatenate(self.cls2_instances[dataset][:setsize], axis=0).reshape(-1,self.enc_dim)
-
-            logging.debug('self.diffvectors[dataset].shape', self.diffvectors[dataset].shape)
-            mean_diffvector = self.diffvectors[dataset][3,:].reshape(-1,self.enc_dim) #np.mean(self.diffvectors[dataset], axis=0).reshape(-1,self.enc_dim)
-            logging.debug('mean_diffvector.shape', mean_diffvector.shape)            
-
-            logging.debug(cls1.shape)
-            logging.debug(cls2.shape)
-            logging.debug(mean_diffvector.shape)
-            X = np.r_[cls1, cls2, mean_diffvector]
-                
-            transform = MDS(n_components=2)
-            X_transformed = transform.fit_transform(X)
-
-            colors = ['red']*setsize + ['blue']*setsize + ['green']
-
-            plt.scatter(X_transformed[:,0], X_transformed[:,1], color=colors)
-            plt.title(f'{dataset} Dataset')
-            plt.show()
-
-
-
-    def calc_word_senses(self, dataset, focus, distance_fnc, with_debiasing=None, logfile=None):
+    def calc_word_senses(self, dataset, focus, distance_fnc, with_debiasing=None, bases_dir=None):
 
             # RED LINE
             acc_dist_corr1_corr2 = np.zeros((self.n_layers,1))
@@ -172,7 +100,9 @@ class Vectorize():
                     print('word is ', word)
 
                     # find sentence_idx, word_idx pairs for various cases:
-                    all_occurrences = [(i, self.cls1_words[dataset][focus][i].index(word)) for i in range(len(self.cls1_words[dataset][focus])) if word in self.cls1_words[dataset][focus][i]]
+                    all_occurrences = [(i, self.cls1_words[dataset][focus][i].index(word)) \
+                                       for i in range(len(self.cls1_words[dataset][focus])) \
+                                       if word in self.cls1_words[dataset][focus][i]]
 
                     corresponding_occurrence = random.choice(all_occurrences)
                     sidx, widx = corresponding_occurrence
@@ -189,8 +119,12 @@ class Vectorize():
                 self.avg_dist_corr1_corr2           = acc_dist_corr1_corr2 / word_count
                 self.avg_dist_cleancorr1_cleancorr2 = acc_dist_cleancorr1_cleancorr2 / word_count
             else:
-                self.avg_dist_corr1_corr2           = np.concatenate((self.avg_dist_corr1_corr2, (acc_dist_corr1_corr2 / word_count)), axis=1) 
-                self.avg_dist_cleancorr1_cleancorr2 = np.concatenate((self.avg_dist_cleancorr1_cleancorr2, (acc_dist_cleancorr1_cleancorr2 / word_count)), axis=1)
+                self.avg_dist_corr1_corr2           = np.concatenate((self.avg_dist_corr1_corr2, 
+                                                                     (acc_dist_corr1_corr2 / word_count)), 
+                                                                     axis=1) 
+                self.avg_dist_cleancorr1_cleancorr2 = np.concatenate((self.avg_dist_cleancorr1_cleancorr2, 
+                                                                     (acc_dist_cleancorr1_cleancorr2 / word_count)), 
+                                                                     axis=1)
             
 
 
@@ -213,7 +147,10 @@ class Vectorize():
                     for word in sentence:  
                         word_count += 1 
 
-                        all_occurrences = [(i, cls_words[i].index(word)) for i in range(len(cls_words)) if word in cls_words[i]]
+                        all_occurrences = [(i, cls_words[i].index(word)) \
+                                           for i in range(len(cls_words)) \
+                                           if word in cls_words[i]]
+
                         if len(all_occurrences) == 1:
                             continue
 
@@ -237,8 +174,12 @@ class Vectorize():
                 self.avg_dist_wordC_anotherC             = acc_dist_wordC_anotherC / word_count
                 self.avg_dist_clean_wordC_clean_anotherC = acc_dist_clean_wordC_clean_anotherC / word_count
             else:
-                self.avg_dist_wordC_anotherC             = np.concatenate((self.avg_dist_wordC_anotherC, (acc_dist_wordC_anotherC / word_count)), axis=1) 
-                self.avg_dist_clean_wordC_clean_anotherC = np.concatenate((self.avg_dist_clean_wordC_clean_anotherC, (acc_dist_clean_wordC_clean_anotherC / word_count)), axis=1)
+                self.avg_dist_wordC_anotherC             = np.concatenate((self.avg_dist_wordC_anotherC, 
+                                                                          (acc_dist_wordC_anotherC / word_count)), 
+                                                                          axis=1) 
+                self.avg_dist_clean_wordC_clean_anotherC = np.concatenate((self.avg_dist_clean_wordC_clean_anotherC, 
+                                                                          (acc_dist_clean_wordC_clean_anotherC / word_count)), 
+                                                                          axis=1)
 
 
 
@@ -255,31 +196,6 @@ class Vectorize():
                 elif class_id == 2:
                     cls_words = self.cls2_words[dataset][focus]
                     cls_instances = self.cls2_instances[dataset][focus]
-
-
-                '''inner loop: w_i \neq w_j condition:
-                for sidx, sentence in enumerate(cls_words):
-                    print('black', sidx)
-                    for widx, word in enumerate(sentence):
-
-                        vec_corr = cls_instances[sidx][widx,:,:]
-                        clean_corr = with_debiasing.clean_data(vec_corr)
-
-                        not_occurrences = [(i, j) for i in range(len(cls_words)) for j in range(len(cls_words[i])) if word not in cls_words[i]]
-                        #not_occurrence = random.choice(not_occurrences)
-                        
-                        occurrence_count += len(not_occurrences)
-
-                        for not_occurrence in not_occurrences:
-                            sidx_2, widx_2 = not_occurrence
-
-                            vec_not_occ = cls_instances[sidx_2][widx_2,:,:]
-                            clean_not_occ = with_debiasing.clean_data(vec_not_occ)
-
-                            acc_dist_within_class += distance_fnc(vec_corr, vec_not_occ)
-                            acc_dist_clean_within_class += distance_fnc(clean_corr, clean_not_occ)
-                '''
-
 
                 ''' i = j condition:'''
 
@@ -311,8 +227,12 @@ class Vectorize():
                 self.avg_dist_within_class       = acc_dist_within_class / occurrence_count
                 self.avg_dist_clean_within_class = acc_dist_clean_within_class / occurrence_count
             else:
-                self.avg_dist_within_class       = np.concatenate((self.avg_dist_within_class, (acc_dist_within_class / occurrence_count)), axis=1) 
-                self.avg_dist_clean_within_class = np.concatenate((self.avg_dist_clean_within_class, (acc_dist_clean_within_class / occurrence_count)), axis=1)
+                self.avg_dist_within_class       = np.concatenate((self.avg_dist_within_class, 
+                                                                  (acc_dist_within_class / occurrence_count)), 
+                                                                  axis=1) 
+                self.avg_dist_clean_within_class = np.concatenate((self.avg_dist_clean_within_class, 
+                                                                  (acc_dist_clean_within_class / occurrence_count)), 
+                                                                  axis=1)
 
 
 
@@ -336,29 +256,6 @@ class Vectorize():
                     not_cls_words = self.cls1_words[dataset][focus]
                     not_cls_instances = self.cls1_instances[dataset][focus]                  
 
-                '''inner loop: w_i \neq w_j condition:
-                for sidx, sentence in enumerate(cls_words):
-                    print('yellow', sidx)
-
-                    for widx, word in enumerate(sentence):
-
-                        vec_corr = cls_instances[sidx][widx,:,:]
-                        clean_corr = with_debiasing.clean_data(vec_corr)
-
-                        not_occurrences = [(i, j) for i in range(len(not_cls_words)) for j in range(len(not_cls_words[i])) if word not in not_cls_words[i]]
-                        #not_occurrence = random.choice(not_occurrences)
-                        
-                        occurrence_count += len(not_occurrences)
-
-                        for not_occurrence in not_occurrences:
-                            sidx_2, widx_2 = not_occurrence
-
-                            vec_not_occ = not_cls_instances[sidx_2][widx_2,:,:]
-                            clean_not_occ = with_debiasing.clean_data(vec_not_occ)
-
-                            acc_dist_between_class += distance_fnc(vec_corr, vec_not_occ)
-                            acc_dist_clean_between_class += distance_fnc(clean_corr, clean_not_occ)
-                '''
                 ''' i = j condition:'''
 
                 centroid_out_class = np.zeros((self.n_layers,self.enc_dim))
@@ -389,13 +286,20 @@ class Vectorize():
                 self.avg_dist_between_class       = acc_dist_between_class / occurrence_count
                 self.avg_dist_clean_between_class = acc_dist_clean_between_class / occurrence_count
             else:
-                self.avg_dist_between_class       = np.concatenate((self.avg_dist_between_class, (acc_dist_between_class / occurrence_count)), axis=1) 
-                self.avg_dist_clean_between_class = np.concatenate((self.avg_dist_clean_between_class, (acc_dist_clean_between_class / occurrence_count)), axis=1)
+                self.avg_dist_between_class       = np.concatenate((self.avg_dist_between_class, 
+                                                                   (acc_dist_between_class / occurrence_count)), 
+                                                                   axis=1) 
+                self.avg_dist_clean_between_class = np.concatenate((self.avg_dist_clean_between_class, 
+                                                                   (acc_dist_clean_between_class / occurrence_count)), 
+                                                                   axis=1)
 
 
 
 
-            if logfile:
+            # If a logging directory is supplied, save the distances there:
+            if base_dir:
+                logfile = f'{base_dir}/{opt.model}/{opt.language}/{dataset}_{focus}_distances.pkl'
+
                 distances = {}
                 distances['pairwise_between_class'] = self.avg_dist_corr1_corr2
                 distances['pairwise_between_class_cleaned'] = self.avg_dist_cleancorr1_cleancorr2
@@ -417,10 +321,9 @@ class Vectorize():
                     pickle.dump(distances, fout)
 
 
-
-
-
-    def plot_word_senses(self, focus, dataset, is_with_debiasing=False):
+    def plot_word_senses(self, opt):
+        dataset = opt.test_dataset
+        focus = opt.test_focus
 
         # Plot all
         if dataset[0:3] == 'SIC' and focus == 'object':
@@ -457,11 +360,15 @@ class Vectorize():
 
 
 
-
-    def plot_word_senses_from_logs(self, basedir, task, model, language, datasets, foci, do_plot_legend=True):
+    def plot_word_senses_from_logs(self, basedir, opt, foci):
         logging.debug(f'in plot_word_senses_from_logs')
-        n_datasets = len(datasets)
+        n_datasets = len(opt.datasets)
         n_foci = len(foci)
+
+        if opt.model == 'MT' and opt.language == 'DE-EL':
+            do_plot_legend = True
+        else:
+            do_plot_legend = False
 
         if do_plot_legend:
             fig, axes = plt.subplots(n_datasets, n_foci, figsize=(24, 4.5))
@@ -472,9 +379,9 @@ class Vectorize():
         #flataxes = [ax for ax in axes for ax in tmp]
         flataxes = axes
 
-        for di, dataset in enumerate(datasets):
+        for di, dataset in enumerate(opt.datasets):
             for fi, focus in enumerate(foci):
-                loadfile = f'{basedir}/{model}/{language}/{dataset}_{focus}_distances.pkl'
+                loadfile = f'{basedir}/{opt.model}/{opt.language}/{dataset}_{focus}_distances.pkl'
                 
                 logging.debug(f'   loading distances from {loadfile}')
                 with open(loadfile, 'rb') as fin:
@@ -517,25 +424,25 @@ class Vectorize():
                 ax.tick_params(labelsize=16)
                     
                 if dataset[0:3] == 'RNN':
-                    if task == 'active-passive':
+                    if opt.task == 'active-passive':
                         ds_alias = 'TEMPL-PAS'
-                    elif task == 'positive-negative':
+                    elif opt.task == 'positive-negative':
                         ds_alias = 'TEMPL-NEG'
                 else:
                     ds_alias = 'SICK'
 
-                if model == 'BERT':
+                if opt.model == 'BERT':
                     model_alias = 'BERT'
-                if model == 'MT' and language == 'DE':
+                if opt.model == 'MT' and opt.language == 'DE':
                     model_alias = 'MT (EN > DE)'
-                if model == 'MT' and language == 'DE-EL':
+                if opt.model == 'MT' and opt.language == 'DE-EL':
                     model_alias = 'MT (EN > DE+EL)'                    
 
-                if task == 'active-passive':
+                if opt.task == 'active-passive':
                     if focus == 'verb': ax.set_title(f'{model_alias} - VERB', fontsize=16)
                     if focus == 'subject': ax.set_title(f'{model_alias} - A-SUBJ / P-AG', fontsize=16)
                     if focus == 'object': ax.set_title(f'{model_alias} - A-OBJ / P-SUBJ', fontsize=16)
-                elif task == 'positive-negative':
+                elif opt.task == 'positive-negative':
                     if focus == 'verb': ax.set_title(f'{model_alias} - VERB', fontsize=16)
                     if focus == 'subject': ax.set_title(f'{model_alias} - SUBJECT', fontsize=16)
                     if focus == 'object': ax.set_title(f'{model_alias} - OBJECT', fontsize=16)
@@ -544,44 +451,15 @@ class Vectorize():
             plt.legend(loc='upper left', bbox_to_anchor=(-1.98, -0.32), fontsize='x-large', ncol=2, fancybox=True, shadow=True)
         
         plt.show()
-
-
-
-    def plot_distances_to_diff(self, ref_word, dataset):
-
-        # find sentence_idx, word_idx pairs for various cases:
-        all_occurrences = [(i, self.cls1_words[dataset][i].index(ref_word)) for i in range(len(self.cls1_words[dataset])) if ref_word in self.cls1_words[dataset][i]]
-        
-        corresponding_occurrence = random.choice(all_occurrences)
-        sidx, widx = corresponding_occurrence
-        vec_corr_1 = self.cls1_instances[dataset][sidx][widx,:,:]
-        vec_corr_2 = self.cls2_instances[dataset][sidx][widx,:,:]
-        diff_corr1_corr2 = vec_corr_1 - vec_corr_2
-
-        random_sidx = random.choice(list(set(range(len(self.cls1_instances[dataset]))).difference(set([corresponding_occurrence[0]]))))
-        
-        fig=plt.figure()
-        colors = ['r', 'b', 'g', 'k', 'c', 'm', 'salmon', 'darkgreen', 'maroon', 'teal', 'purple', 'gold', 'slateblue', 'plum']
-
-        for widx, word in enumerate(self.cls1_words[dataset][random_sidx]):
-            vec_word = self.cls1_instances[dataset][random_sidx][widx,:,:]
-            dist_word = self.layerwise_eucdist(diff_corr1_corr2, vec_word)
-            plt.plot(range(self.n_layers), dist_word, c=colors[widx], linestyle='solid', label=f'{word} [act]')
-
-        for widx, word in enumerate(self.cls2_words[dataset][random_sidx]):
-            vec_word = self.cls2_instances[dataset][random_sidx][widx,:,:]
-            dist_word = self.layerwise_eucdist(diff_corr1_corr2, vec_word)
-            plt.plot(range(self.n_layers), dist_word, c=colors[widx], linestyle='dotted', label=f'{word} [pass]')
-
-        plt.title(f'{dataset} dataset: "{ref_word}[act] - {ref_word}[pass]"')
-        plt.legend(loc='right', bbox_to_anchor=(1.05, 0), fontsize='x-small', ncol=10, fancybox=True, shadow=True)
-        plt.show()
             
 
 
+    # Two possible distance functions, defined over the layers:
     def layerwise_eucdist(self, vec1, vec2):
-        return np.array([np.linalg.norm(vec1[layer,:] - vec2[layer,:]) for layer in range(self.n_layers)]).reshape(self.n_layers,1)
+        return np.array([np.linalg.norm(vec1[layer,:] - vec2[layer,:]) \
+                        for layer in range(self.n_layers)]).reshape(self.n_layers,1)
 
     def layerwise_cosine_sim(self, vec1, vec2):
-        return np.array([cosine_similarity(vec1[layer,:].reshape(1,-1), vec2[layer,:].reshape(1,-1)) for layer in range(self.n_layers)]).reshape(self.n_layers,1)
+        return np.array([cosine_similarity(vec1[layer,:].reshape(1,-1), vec2[layer,:].reshape(1,-1)) \
+                        for layer in range(self.n_layers)]).reshape(self.n_layers,1)
             

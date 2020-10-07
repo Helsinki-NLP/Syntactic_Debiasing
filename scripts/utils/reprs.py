@@ -536,14 +536,14 @@ def mt_extract(dataset, focus, mt_reprs_path, data_path, cls1_name, cls2_name, t
 def load_representations(opt):
     cls1_name, cls2_name = opt.task.split('-')
 
-    cls1_instances = {dataset: {} for dataset in opt.dataset}
-    cls2_instances = {dataset: {} for dataset in opt.dataset}
+    cls1_instances = {dataset: {} for dataset in opt.datasets}
+    cls2_instances = {dataset: {} for dataset in opt.datasets}
 
-    cls1_words = {dataset: {} for dataset in opt.dataset}
-    cls2_words = {dataset: {} for dataset in opt.dataset}
+    cls1_words = {dataset: {} for dataset in opt.datasets}
+    cls2_words = {dataset: {} for dataset in opt.datasets}
 
-    for dataset in opt.dataset:
-        for focus in opt.focus:
+    for dataset in opt.datasets:
+        for focus in opt.foci:
             logging.info('Loading representations from dataset: ' + dataset + ', focus: ' + focus + ' at ' + opt.load_reprs_path)
 
             # These will be lists of np arrays of shape (seq_len x n_layers x enc_dim), 
@@ -560,14 +560,14 @@ def load_representations(opt):
 def extract_representations(opt):
     cls1_name, cls2_name = opt.task.split('-')
 
-    cls1_instances = {dataset: {} for dataset in opt.dataset}
-    cls2_instances = {dataset: {} for dataset in opt.dataset}
+    cls1_instances = {dataset: {} for dataset in opt.datasets}
+    cls2_instances = {dataset: {} for dataset in opt.datasets}
 
-    cls1_words = {dataset: {} for dataset in opt.dataset}
-    cls2_words = {dataset: {} for dataset in opt.dataset} 
+    cls1_words = {dataset: {} for dataset in opt.datasets}
+    cls2_words = {dataset: {} for dataset in opt.datasets} 
 
-    for dataset, dataset_path in zip(opt.dataset, opt.dataset_path):
-        for focus in opt.focus:
+    for dataset, dataset_path in zip(opt.datasets, opt.dataset_path):
+        for focus in opt.foci:
             logging.info('Extracting representations from ' + dataset + ' at ' + dataset_path)
             
             if opt.model == 'BERT':
