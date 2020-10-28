@@ -147,7 +147,6 @@ def main(opt):
                 # Then plot
                 vc.plot_word_senses(opt)
 
-
 # --- end of the main function
 
 

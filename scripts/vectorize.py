@@ -434,9 +434,9 @@ class Vectorize():
                 if opt.model == 'BERT':
                     model_alias = 'BERT'
                 if opt.model == 'MT' and opt.language == 'DE':
-                    model_alias = 'MT (EN > DE)'
+                    model_alias = 'MT (EN -> DE)'
                 if opt.model == 'MT' and opt.language == 'DE-EL':
-                    model_alias = 'MT (EN > DE+EL)'                    
+                    model_alias = 'MT (EN -> DE+EL)'                    
 
                 if opt.task == 'active-passive':
                     if focus == 'verb': ax.set_title(f'{model_alias} - VERB', fontsize=16)
